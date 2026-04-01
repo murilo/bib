@@ -1,0 +1,2151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="bib"">
+  <meta name="description" content="bib.muitos.com — leitura rápida da Bíblia com detecção de versículos">
+  <title>bib.muitos.com</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Literata:opsz,wght@7..72,400;7..72,600&family=Lora:wght@400;600&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root, [data-theme="light"] { --bg: #FDF6E3; --bg2: #EEE8D5; --bg3: #DDD6C1; --gold: #B58900; --cream: #1a1a1a; --cream2: #333333; }
+    [data-theme="dark"] { --bg: #1a1a2e; --bg2: #16213e; --bg3: #0f3460; --gold: #d4a574; --cream: #f5e6d3; --cream2: #e8d5c4; }
+    body { background: var(--bg); color: var(--cream); font-family: 'Source Serif 4', Georgia, serif; }
+    /* Responsive reading layout */
+    #chapterHeader > div, #chapterDisplay, .bottom-bar-inner {
+      max-width: var(--content-width, 720px); margin-left: auto; margin-right: auto;
+    }
+    @media (min-width: 1024px) {
+      #chapterContent { font-size: 1.25rem; line-height: 1.8; }
+    }
+    .gold { color: var(--gold); }
+    .color-swatch { width:32px; height:32px; border-radius:50%; border:2px solid rgba(212,165,116,0.3); cursor:pointer; transition: transform 150ms; }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.active { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+    .bg-card { background: var(--bg2); }
+    .bg-highlight { background: var(--bg3); }
+    .btn-gold { background: var(--gold); color: var(--bg); }
+    .btn-gold:hover { background: #c4955a; }
+    .verse-highlight { background: rgba(212,165,116,0.2); border-left: 3px solid var(--gold); padding: 4px 8px; border-radius: 4px; }
+    [data-theme="dark"] .words-of-jesus { color: #FFFFFF !important; font-weight: bold; }
+    [data-theme="light"] .words-of-jesus, :root .words-of-jesus { color: #CC0000 !important; font-weight: bold; }
+    .pulse-listen { animation: pulse-gold 2s infinite; }
+    @keyframes pulse-gold {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(212,165,116,0.7); }
+      50% { box-shadow: 0 0 0 20px rgba(212,165,116,0); }
+    }
+    .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+    .fade-in { animation: fadeIn 0.5s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .modal-bg { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+    input[type="text"], input[type="password"], select {
+      background: var(--bg); border: 1px solid var(--gold); color: var(--cream);
+      border-radius: 8px; padding: 10px 14px; width: 100%; outline: none;
+    }
+    input:focus, select:focus { border-color: #e8c090; box-shadow: 0 0 0 2px rgba(212,165,116,0.3); }
+    select option { background: var(--bg); color: var(--cream); }
+    .ch-nav-btn { background: var(--bg3); color: var(--gold); border: 1px solid rgba(212,165,116,0.3); padding: 8px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+    .ch-nav-btn:hover:not(:disabled) { background: rgba(212,165,116,0.2); }
+    .ch-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .book-section-title { color: var(--cream); font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; padding: 8px 0 4px; border-bottom: 1px solid rgba(212,165,116,0.2); margin-top: 12px; }
+    .book-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; }
+    .book-item:hover { background: var(--bg3); }
+    .chapter-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+    .chapter-cell { background: var(--bg3); color: var(--cream); border: 1px solid rgba(212,165,116,0.2); border-radius: 6px; padding: 8px; text-align: center; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+    .chapter-cell:hover { background: rgba(212,165,116,0.3); border-color: var(--gold); }
+    .translation-badge { font-size: 13px; background: rgba(212,165,116,0.2); color: var(--cream); font-weight: 500; padding: 3px 10px; border-radius: 10px; cursor: pointer; }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
+    .onboard-arrow {
+      position: fixed; z-index: 60; pointer-events: none;
+      bottom: 75px; right: 18px;
+      animation: arrowBounce 1s ease-in-out infinite;
+      font-size: 36px; opacity: 0.7; color: var(--gold);
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    }
+    @keyframes arrowBounce {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(4px, 8px); }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- No top bar -->
+
+  <!-- Fixed Chapter Header -->
+  <div id="chapterHeader" class="hidden" style="position:fixed;top:0;left:0;right:0;z-index:30;background:var(--bg);border-bottom:1px solid rgba(212,165,116,0.15);padding:6px 10px;">
+    <div class="flex items-center justify-between">
+      <h2 id="verseRef" class="text-lg font-bold gold" style="white-space:nowrap;"></h2>
+      <select id="translationBadgeSelect" onchange="changeTranslationFromBadge(this.value)" 
+        style="font-size:14px; padding:6px 10px; border-radius:10px; background:rgba(212,165,116,0.15); border:1px solid rgba(212,165,116,0.3); color:var(--cream); font-weight:500; flex:1; min-width:0; max-width:200px;">
+      </select>
+      <button id="ttsHeaderBtn" onclick="toggleNarration()" 
+        style="font-size:14px; padding:6px 12px; border-radius:10px; background:rgba(212,165,116,0.15); border:1px solid rgba(212,165,116,0.3); color:var(--cream); font-weight:500; flex-shrink:0; cursor:pointer; white-space:nowrap; transition: all 150ms;"
+        onmouseenter="this.style.background='rgba(212,165,116,0.3)'" onmouseleave="this.style.background='rgba(212,165,116,0.15)'">
+        Ler em Voz Alta
+      </button>
+    </div>
+    <!-- chapter nav moved to bottom bar -->
+  </div>
+
+  <!-- Main Content -->
+  <main class="flex-1 overflow-y-auto pb-64 scrollbar-thin">
+
+    <!-- Status (minimal) -->
+    <div id="statusMsg" class="px-4 py-2 text-sm opacity-60 text-center"></div>
+
+    <!-- Welcome / Empty State -->
+    <div id="welcomeScreen" class="flex flex-col items-center justify-center px-6 text-center" style="min-height:60vh;">
+      <!-- Devotional section (loaded via JS) -->
+      <div id="devotionalSection" style="width:100%; max-width:400px; margin-bottom:20px; display:none;">
+        <img id="devotionalImg" src="" alt="Devocional do dia" loading="lazy" onclick="shareDevotional()"
+          style="width:100%; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.3); margin-bottom:16px; cursor:pointer;">
+        <div style="display:flex;justify-content:center;gap:8px;align-items:center;margin:-6px 0 10px 0;flex-wrap:wrap;">
+          <span id="devotionalNetBadge" style="display:none;font-size:0.72rem;padding:3px 8px;border-radius:999px;background:rgba(212,165,116,0.16);border:1px solid rgba(212,165,116,0.28);color:var(--gold);font-weight:600;">offline</span>
+          <div id="devotionalMeta" class="gold" style="text-align:center; font-size:0.8rem; opacity:0.75;"></div>
+        </div>
+        <div id="devotionalText" style="text-align:left; font-size:0.95rem; line-height:1.6; padding:0 8px; white-space:pre-line;"></div>
+        <!-- watermark is in the image itself -->
+        <div style="text-align:center; margin-top:12px;">
+          <button id="shareDevotionalBtn" onclick="shareDevotional()" style="display:none; padding:10px 24px; border-radius:12px; background:rgba(212,165,116,0.15); border:1px solid rgba(212,165,116,0.3); color:var(--gold); cursor:pointer; font-size:0.9rem; transition:all 0.2s;"
+            onmouseenter="this.style.background='rgba(212,165,116,0.3)'" onmouseleave="this.style.background='rgba(212,165,116,0.15)'">
+            📤 Compartilhe A Palavra!
+          </button>
+        </div>
+      </div>
+      <!-- Fallback header (shown if no devotional) -->
+      <div id="welcomeFallback">
+        <div style="font-size:3rem; margin-bottom:12px;">📖</div>
+        <h2 class="gold" style="font-size:1.3rem; font-weight:600; margin-bottom:6px;">bib.muitos.com</h2>
+        <div id="welcomeLastUpdated" style="font-size:0.85rem; opacity:0.75;"></div>
+      </div>
+      <div style="margin-bottom:24px;"></div>
+
+      <div id="welcomeOffline" style="width:100%; max-width:360px; padding:20px; border-radius:16px; background:rgba(212,165,116,0.08); border:1px solid rgba(212,165,116,0.2);">
+        <p class="gold" style="font-size:0.9rem; font-weight:600; margin-bottom:14px;">📖 Leia a Bíblia mesmo sem internet</p>
+        <div id="welcomeTransList" style="display:flex; flex-direction:column; gap:8px;"></div>
+        <a href="#" id="welcomeMoreVersions" onclick="event.preventDefault();hideWelcomeMore();showSettings();" style="display:block;margin-top:14px;font-size:0.85rem;color:var(--gold);text-decoration:underline;opacity:0.8;">Quer ver mais versões? Clique aqui</a>
+      </div>
+    </div>
+
+    <!-- Chapter Display -->
+    <div id="chapterDisplay" class="hidden fade-in">
+      <p id="chapterSubtitle" class="text-xs opacity-50 px-3 py-2" style="display:none;"></p>
+      <div id="chapterContent" class="text-base leading-relaxed space-y-1 px-3"></div>
+    </div>
+
+    <!-- Transcript (hidden for now) -->
+    <!-- removed transcript section -->
+
+    <!-- Help Modal -->
+  <div id="helpModal2" class="hidden fixed inset-0 modal-bg z-50 flex items-end sm:items-center justify-center">
+    <div class="bg-card w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 max-h-[80vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg gold font-bold">❓ Como usar</h2>
+        <button onclick="hideHelp2()" class="text-2xl opacity-70 hover:opacity-100">✕</button>
+      </div>
+      <div class="space-y-3 text-sm leading-relaxed">
+        <p>🔍 Busque versículos digitando no campo — aceita abreviações (Sl 23, Jo 3:16, gn1)</p>
+        <p>🎙️ Pressione e segure o microfone enquanto fala o versículo, solte para buscar — ou toque, fale, e toque novamente para parar</p>
+        <p>📖 Troque a versão da Bíblia no menu acima do texto (A Mensagem, NVI, Almeida...)</p>
+        <p>👆 Arraste para os lados para navegar entre capítulos</p>
+        <p>🤏 Pinça para ajustar o tamanho da fonte</p>
+        <p>☰ Toque no menu para ver seu histórico de buscas</p>
+        <p class="opacity-60">💡 Detecção por voz funciona melhor no Chrome/Edge</p>
+      </div>
+    </div>
+  </div>
+
+  </main>
+
+  <!-- Bottom Bar: Search + Mic (WhatsApp style) + Settings -->
+  <div class="fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-[rgba(212,165,116,0.2)] safe-bottom">
+   <div class="bottom-bar-inner">
+    <!-- Chapter nav row (hidden until a book is loaded) -->
+    <div id="chapterNavRow" class="flex items-center justify-center px-3 pt-2" style="gap:10px; display:none;">
+      <button id="prevChBtn" class="ch-nav-btn" onclick="navigateChapter(-1)" style="padding:2px 12px;font-size:18px;">‹</button>
+      <select id="chapterLabel" onchange="goToChapter(parseInt(this.value))" class="text-sm gold opacity-70" style="background:transparent; border:1px solid rgba(212,165,116,0.3); border-radius:8px; padding:3px 10px; color:var(--gold); cursor:pointer; text-align:center; text-align-last:center; max-width:160px;"></select>
+      <button id="nextChBtn" class="ch-nav-btn" onclick="navigateChapter(1)" style="padding:2px 12px;font-size:18px;">›</button>
+    </div>
+    <!-- Search row: gear + search + mic -->
+    <div class="flex items-center gap-2 px-3 py-3">
+      <button onclick="showHistoryPanel()" class="flex-shrink-0 flex items-center justify-center opacity-60 hover:opacity-100" style="width:44px;height:44px;font-size:22px;">☰</button>
+      <div class="flex-1 relative">
+        <input type="text" id="quickSearch" placeholder="Fale ou Digite — João 3:16, Sl 23" 
+          class="w-full" style="padding: 14px 16px; font-size: 16px;" 
+          onfocus="onSearchFocus()" onblur="onSearchBlur()"
+          onkeydown="if(event.key==='Enter'){handleQuickSearch(this.value);this.blur();}"
+          oninput="handleSearchInput(this.value);updateActionBtn(this.value)">
+        <div id="searchDropup" class="hidden absolute bottom-full left-0 right-0 mb-1 bg-card rounded-xl border border-[rgba(212,165,116,0.3)] max-h-[60vh] overflow-y-auto scrollbar-thin shadow-2xl">
+          <div id="searchSuggestions"></div>
+          <div id="inlineBooksPanel"></div>
+        </div>
+      </div>
+      <button id="actionBtn" class="btn-gold rounded-full flex-shrink-0 flex items-center justify-center transition-all select-none" style="width:52px;height:52px;-webkit-user-select:none;user-select:none;touch-action:none;">
+        <span id="actionIcon" class="text-2xl">🎙️</span>
+      </button>
+    </div>
+   </div>
+  </div>
+
+  <!-- History Panel (hamburger menu) -->
+  <div id="historyPanel" class="hidden fixed inset-0 modal-bg z-50 flex items-end sm:items-center justify-center">
+    <div class="bg-card w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center p-4 pb-2 flex-shrink-0">
+        <h2 class="text-lg gold font-bold">📋 Histórico</h2>
+        <button onclick="hideHistoryPanel()" class="text-2xl opacity-70 hover:opacity-100">✕</button>
+      </div>
+      <div id="historyPanelContent" class="flex-1 overflow-y-auto scrollbar-thin px-4 pb-2 text-sm"></div>
+      <!-- Settings & Help inside hamburger -->
+      <div class="px-4 pb-4 border-t border-[rgba(212,165,116,0.2)] pt-3 space-y-3 flex-shrink-0">
+        <button onclick="hideHistoryPanel();showSettings();" class="w-full text-left text-sm gold opacity-70 hover:opacity-100 py-2">⚙️ Configurações</button>
+        <button onclick="hideHistoryPanel();showHelp2();" class="w-full text-left text-sm gold opacity-70 hover:opacity-100 py-2">❓ Como usar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="hidden fixed inset-0 modal-bg z-50 flex items-end sm:items-center justify-center">
+    <div class="bg-card w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 max-h-[80vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="text-xl gold font-bold">⚙️ Configurações</h2>
+        <button onclick="hideSettings()" class="text-2xl opacity-70 hover:opacity-100">✕</button>
+      </div>
+
+      <div class="space-y-5">
+        <!-- Theme -->
+        <div>
+          <label class="text-sm gold block mb-2">🎨 Tema</label>
+          <div id="themeButtons" style="display:flex;gap:0;border:1px solid var(--gold);border-radius:8px;overflow:hidden;">
+            <button onclick="applyTheme('light')" data-theme-btn="light" style="flex:1;padding:10px;background:transparent;color:var(--cream);border:none;cursor:pointer;font-size:14px;transition:all 0.2s;">☀️ Claro</button>
+            <button onclick="applyTheme('dark')" data-theme-btn="dark" style="flex:1;padding:10px;background:transparent;color:var(--cream);border:none;cursor:pointer;font-size:14px;border-left:1px solid var(--gold);border-right:1px solid var(--gold);transition:all 0.2s;">🌙 Escuro</button>
+            <button onclick="applyTheme('system')" data-theme-btn="system" style="flex:1;padding:10px;background:transparent;color:var(--cream);border:none;cursor:pointer;font-size:14px;transition:all 0.2s;">💻 Sistema</button>
+          </div>
+        </div>
+
+        <!-- Font -->
+        <div>
+          <label class="text-sm gold block mb-2">🔤 Fonte</label>
+          <select id="fontFamilySelect" onchange="applyFont(this.value, parseInt($('fontSizeSlider').value))">
+            <option value="'Source Serif 4', Georgia, serif">Source Serif (padrão)</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="'Literata', Georgia, serif">Literata</option>
+            <option value="'Lora', Georgia, serif">Lora</option>
+            <option value="'Inter', system-ui, sans-serif">Inter (sans)</option>
+            <option value="'Palatino Linotype', 'Book Antiqua', Palatino, serif">Palatino</option>
+          </select>
+          <label class="text-sm gold block mb-1 mt-3">Tamanho: <span id="fontSizeLabel">18px</span></label>
+          <input type="range" id="fontSizeSlider" min="14" max="28" value="18" 
+            oninput="$('fontSizeLabel').textContent=this.value+'px';applyFont($('fontFamilySelect').value, parseInt(this.value))"
+            style="width:100%;accent-color:var(--gold);">
+          <label class="text-sm gold block mb-1 mt-3">Largura do texto: <span id="widthLabel">720px</span></label>
+          <input type="range" id="widthSlider" min="480" max="1200" step="40" value="720"
+            oninput="applyContentWidth(parseInt(this.value))"
+            style="width:100%;accent-color:var(--gold);">
+        </div>
+
+        <!-- Language -->
+        <div>
+          <label class="text-sm gold block mb-2">🌐 Idioma / Language</label>
+          <select id="langSelect" onchange="saveLanguage(this.value)" style="padding:10px 12px; font-size:14px;">
+            <option value="pt">Português</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
+
+        <!-- Translation -->
+        <div>
+          <label class="text-sm gold block mb-2">📖 Versão da Bíblia</label>
+          <select id="translationSelect" onchange="saveTranslation()">
+            <option value="ARA">ARA - Almeida Revista e Atualizada</option>
+            <option value="NVIPT">NVIPT - Nova Versão Internacional</option>
+            <option value="MENS">MENS - A Mensagem</option>
+            <option value="NTLH">NTLH - Linguagem de Hoje</option>
+            <option value="NVT">NVT - Nova Versão Transformadora</option>
+            <option value="NAA">NAA - Nova Almeida Atualizada</option>
+            <option value="ACF11">ACF11 - Almeida Corrigida Fiel</option>
+            <option value="ARC09">ARC09 - Almeida Revista e Corrigida</option>
+            <option value="KJA">KJA - King James Atualizada</option>
+            <option value="MSG">MSG - The Message (EN)</option>
+            <option value="KJV">KJV - King James Version (EN)</option>
+            <option value="NIV2011">NIV2011 - NIV 2011 (EN)</option>
+            <option value="RV1960">RV1960 - Reina-Valera 1960 (ES)</option>
+          </select>
+        </div>
+
+        <!-- TTS Settings -->
+        <div>
+          <label class="text-sm gold block mb-2">🔊 Voz</label>
+          <select id="ttsVoiceSelect" onchange="localStorage.setItem('tts_voice', this.value);"
+            class="w-full" style="padding:10px 12px; font-size:14px; background:var(--bg); border:1px solid rgba(212,165,116,0.3); border-radius:10px; color:var(--cream);">
+            <option value="">Automática</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm gold block mb-2">⏩ Velocidade: <span id="ttsRateLabel">1.0x</span></label>
+          <input type="range" id="ttsRateSlider" min="0.5" max="2.0" step="0.1" value="1.0"
+            oninput="localStorage.setItem('tts_rate', this.value); document.getElementById('ttsRateLabel').textContent = this.value + 'x';"
+            class="slider w-full">
+        </div>
+
+        <!-- Offline Bible -->
+        <div>
+          <label class="text-sm gold block mb-2">📥 Bíblia Offline</label>
+          <div class="flex items-center gap-2">
+            <select id="offlineTranslation" style="flex:1; padding:8px 10px; font-size:13px; background:var(--bg); border:1px solid rgba(212,165,116,0.3); border-radius:10px; color:var(--cream);">
+              <option value="ARA">ARA - Almeida Revista e Atualizada</option>
+              <option value="NVIPT">NVIPT - Nova Versão Internacional</option>
+              <option value="MENS">MENS - A Mensagem</option>
+              <option value="NTLH">NTLH - Linguagem de Hoje</option>
+              <option value="NVT">NVT - Nova Versão Transformadora</option>
+              <option value="NAA">NAA - Nova Almeida Atualizada</option>
+              <option value="ACF11">ACF11 - Almeida Corrigida Fiel</option>
+              <option value="ARC09">ARC09 - Almeida Revista e Corrigida</option>
+              <option value="KJA">KJA - King James Atualizada</option>
+              <option value="MSG">MSG - The Message (EN)</option>
+              <option value="KJV">KJV - King James Version (EN)</option>
+              <option value="NIV2011">NIV2011 - NIV 2011 (EN)</option>
+              <option value="RV1960">RV1960 - Reina-Valera 1960 (ES)</option>
+            </select>
+            <button id="offlineBtn" onclick="downloadForOffline()" 
+              style="padding:8px 12px; font-size:12px; border-radius:10px; background:rgba(212,165,116,0.15); border:1px solid rgba(212,165,116,0.3); color:var(--gold); cursor:pointer; white-space:nowrap;">
+              Baixar
+            </button>
+          </div>
+          <div id="offlineProgress" style="display:none; margin-top:6px;">
+            <div style="height:4px; background:rgba(212,165,116,0.15); border-radius:2px; overflow:hidden;">
+              <div id="offlineProgressBar" style="height:100%; width:0%; background:var(--gold); transition:width 0.3s;"></div>
+            </div>
+          </div>
+          <p id="offlineStatus" class="text-xs opacity-50 mt-1"></p>
+        </div>
+
+        <!-- Red Letter -->
+        <div>
+          <label class="text-sm gold block mb-2">✝️ Palavras de Jesus em destaque</label>
+          <div style="display:flex;gap:0;border:1px solid var(--gold);border-radius:8px;overflow:hidden;">
+            <button onclick="setRedLetter(true)" id="redLetterOn" style="flex:1;padding:10px;background:transparent;color:var(--cream);border:none;cursor:pointer;font-size:14px;transition:all 0.2s;">Sim</button>
+            <button onclick="setRedLetter(false)" id="redLetterOff" style="flex:1;padding:10px;background:transparent;color:var(--cream);border:none;cursor:pointer;font-size:14px;border-left:1px solid var(--gold);transition:all 0.2s;">Não</button>
+          </div>
+        </div>
+
+        <!-- API Key (hidden for now)
+        <div>
+          <label class="text-sm gold block mb-2">🔑 Chave Gemini API (opcional — já funciona sem ela)</label>
+          <input type="password" id="apiKeyInput" placeholder="AIza..." oninput="saveApiKey()">
+          <p class="text-xs opacity-50 mt-1">Necessária apenas se o reconhecimento de voz do navegador não funcionar. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline gold">Obter chave gratuita</a></p>
+        </div>
+        -->
+
+        <!-- Donation (hidden for now)
+        <div class="bg-highlight rounded-xl p-4 text-center">
+          <p class="text-xs opacity-50 mb-1">Doações voluntárias via Bitcoin</p>
+          <p class="text-xs gold font-mono break-all cursor-pointer hover:opacity-80" style="font-size:10px;" onclick="showBtcQR()">bc1q8xlhzut5nlqufc4fk60t672g7klazjzfjqt9zr</p>
+        </div>
+        -->
+
+        <!-- Footer (hidden for now)
+        <div id="aboutSection" class="text-xs opacity-50 text-center space-y-1">
+          <p>bib.muitos.com</p>
+          <p>Versículos: bolls.life (<span id="aboutTranslation"></span>)</p>
+          <p><a href="https://muitos.com" target="_blank" class="underline">muitos.com</a></p>
+        </div>
+        -->
+      </div>
+    </div>
+  </div>
+
+<script>
+// ========== RED LETTER (Words of Jesus) ==========
+let redLetterData = null;
+let redLetterEnabled = localStorage.getItem('bib_red_letter') !== 'false'; // default ON
+(async function loadRedLetter() {
+  try {
+    const r = await fetch('data/red-letter.json');
+    if (r.ok) redLetterData = await r.json();
+  } catch(e) { console.warn('Red letter data not available'); }
+})();
+function isRedLetter(bookId, chapter, verse) {
+  if (!redLetterEnabled || !redLetterData) return false;
+  const b = redLetterData[String(bookId)];
+  if (!b) return false;
+  const c = b[String(chapter)];
+  return c ? c.includes(verse) : false;
+}
+function setRedLetter(on) {
+  redLetterEnabled = on;
+  localStorage.setItem('bib_red_letter', on);
+  document.getElementById('redLetterOn').style.background = on ? 'var(--gold)' : 'transparent';
+  document.getElementById('redLetterOn').style.color = on ? 'var(--bg)' : 'var(--cream)';
+  document.getElementById('redLetterOff').style.background = !on ? 'var(--gold)' : 'transparent';
+  document.getElementById('redLetterOff').style.color = !on ? 'var(--bg)' : 'var(--cream)';
+  if (currentRef) loadChapter(currentRef.book, currentRef.chapter, currentRef.verse, currentRef.verseEnd);
+}
+
+// ========== BIBLE BOOKS DATA ==========
+const BIBLE_BOOKS = {
+  'genesis': { abbrev: 'Gn', full: 'Gênesis', id: 1, chapters: 50, variations: ['gn', 'gen', 'gên', 'genesis', 'gênesis'] },
+  'exodo': { abbrev: 'Êx', full: 'Êxodo', id: 2, chapters: 40, variations: ['êx', 'ex', 'exodo', 'êxodo'] },
+  'levitico': { abbrev: 'Lv', full: 'Levítico', id: 3, chapters: 27, variations: ['lv', 'lev', 'levitico', 'levítico'] },
+  'numeros': { abbrev: 'Nm', full: 'Números', id: 4, chapters: 36, variations: ['nm', 'núm', 'num', 'numeros', 'números'] },
+  'deuteronomio': { abbrev: 'Dt', full: 'Deuteronômio', id: 5, chapters: 34, variations: ['dt', 'deut', 'deuteronomio', 'deuteronômio'] },
+  'josue': { abbrev: 'Js', full: 'Josué', id: 6, chapters: 24, variations: ['js', 'jos', 'josue', 'josué'] },
+  'juizes': { abbrev: 'Jz', full: 'Juízes', id: 7, chapters: 21, variations: ['jz', 'jui', 'juiz', 'juizes', 'juízes'] },
+  'rute': { abbrev: 'Rt', full: 'Rute', id: 8, chapters: 4, variations: ['rt', 'rut', 'rute'] },
+  '1samuel': { abbrev: '1Sm', full: '1 Samuel', id: 9, chapters: 31, variations: ['1sm', '1 sm', '1sam', '1 sam', 'i sm', 'primeiro samuel', 'primeira samuel'] },
+  '2samuel': { abbrev: '2Sm', full: '2 Samuel', id: 10, chapters: 24, variations: ['2sm', '2 sm', '2sam', '2 sam', 'ii sm', 'segundo samuel', 'segunda samuel'] },
+  '1reis': { abbrev: '1Rs', full: '1 Reis', id: 11, chapters: 22, variations: ['1rs', '1 rs', '1re', '1 re', 'i rs', 'primeiro reis', 'primeira reis'] },
+  '2reis': { abbrev: '2Rs', full: '2 Reis', id: 12, chapters: 25, variations: ['2rs', '2 rs', '2re', '2 re', 'ii rs', 'segundo reis', 'segunda reis'] },
+  '1cronicas': { abbrev: '1Cr', full: '1 Crônicas', id: 13, chapters: 29, variations: ['1cr', '1 cr', '1crô', '1 crô', 'i cr', 'primeiro cronicas', 'primeira crônicas'] },
+  '2cronicas': { abbrev: '2Cr', full: '2 Crônicas', id: 14, chapters: 36, variations: ['2cr', '2 cr', '2crô', '2 crô', 'ii cr', 'segundo cronicas', 'segunda crônicas'] },
+  'esdras': { abbrev: 'Ed', full: 'Esdras', id: 15, chapters: 10, variations: ['ed', 'esd', 'esdras'] },
+  'neemias': { abbrev: 'Ne', full: 'Neemias', id: 16, chapters: 13, variations: ['ne', 'nee', 'neemias'] },
+  'ester': { abbrev: 'Et', full: 'Ester', id: 17, chapters: 10, variations: ['et', 'est', 'ester'] },
+  'jo': { abbrev: 'Jó', full: 'Jó', id: 18, chapters: 42, variations: ['jó', 'jo', 'job'] },
+  'salmos': { abbrev: 'Sl', full: 'Salmos', id: 19, chapters: 150, variations: ['sl', 'ps', 'sal', 'salmo', 'salmos'] },
+  'proverbios': { abbrev: 'Pv', full: 'Provérbios', id: 20, chapters: 31, variations: ['pv', 'pr', 'prov', 'proverbios', 'provérbios'] },
+  'eclesiastes': { abbrev: 'Ec', full: 'Eclesiastes', id: 21, chapters: 12, variations: ['ec', 'ecl', 'eclesiastes'] },
+  'canticos': { abbrev: 'Ct', full: 'Cânticos', id: 22, chapters: 8, variations: ['ct', 'cânt', 'cân', 'canticos', 'cânticos', 'cantares'] },
+  'isaias': { abbrev: 'Is', full: 'Isaías', id: 23, chapters: 66, variations: ['is', 'isa', 'isaias', 'isaías'] },
+  'jeremias': { abbrev: 'Jr', full: 'Jeremias', id: 24, chapters: 52, variations: ['jr', 'jer', 'jeremias'] },
+  'lamentacoes': { abbrev: 'Lm', full: 'Lamentações', id: 25, chapters: 5, variations: ['lm', 'lam', 'lamentacoes', 'lamentações'] },
+  'ezequiel': { abbrev: 'Ez', full: 'Ezequiel', id: 26, chapters: 48, variations: ['ez', 'eze', 'ezequiel'] },
+  'daniel': { abbrev: 'Dn', full: 'Daniel', id: 27, chapters: 12, variations: ['dn', 'dan', 'daniel'] },
+  'oseias': { abbrev: 'Os', full: 'Oséias', id: 28, chapters: 14, variations: ['os', 'osé', 'ose', 'oseias', 'oséias'] },
+  'joel': { abbrev: 'Jl', full: 'Joel', id: 29, chapters: 3, variations: ['jl', 'joe', 'joel'] },
+  'amos': { abbrev: 'Am', full: 'Amós', id: 30, chapters: 9, variations: ['am', 'amó', 'amo', 'amos', 'amós'] },
+  'obadias': { abbrev: 'Ob', full: 'Obadias', id: 31, chapters: 1, variations: ['ob', 'obd', 'obadias'] },
+  'jonas': { abbrev: 'Jn', full: 'Jonas', id: 32, chapters: 4, variations: ['jn', 'jon', 'jonas'] },
+  'miqueias': { abbrev: 'Mq', full: 'Miquéias', id: 33, chapters: 7, variations: ['mq', 'miq', 'miqueias', 'miquéias'] },
+  'naum': { abbrev: 'Na', full: 'Naum', id: 34, chapters: 3, variations: ['na', 'nau', 'naum'] },
+  'habacuque': { abbrev: 'Hc', full: 'Habacuque', id: 35, chapters: 3, variations: ['hc', 'hab', 'habacuque'] },
+  'sofonias': { abbrev: 'Sf', full: 'Sofonias', id: 36, chapters: 3, variations: ['sf', 'sof', 'sofonias'] },
+  'ageu': { abbrev: 'Ag', full: 'Ageu', id: 37, chapters: 2, variations: ['ag', 'age', 'ageu'] },
+  'zacarias': { abbrev: 'Zc', full: 'Zacarias', id: 38, chapters: 14, variations: ['zc', 'zac', 'zacarias'] },
+  'malaquias': { abbrev: 'Ml', full: 'Malaquias', id: 39, chapters: 4, variations: ['ml', 'mal', 'malaquias'] },
+  'mateus': { abbrev: 'Mt', full: 'Mateus', id: 40, chapters: 28, variations: ['mt', 'mat', 'mateus'] },
+  'marcos': { abbrev: 'Mc', full: 'Marcos', id: 41, chapters: 16, variations: ['mc', 'mar', 'marcos'] },
+  'lucas': { abbrev: 'Lc', full: 'Lucas', id: 42, chapters: 24, variations: ['lc', 'luc', 'lucas'] },
+  'joao': { abbrev: 'Jo', full: 'João', id: 43, chapters: 21, variations: ['jo', 'joa', 'joao', 'joão', 'evangelho de joão'] },
+  'atos': { abbrev: 'At', full: 'Atos', id: 44, chapters: 28, variations: ['at', 'act', 'atos', 'atos dos apostolos', 'atos dos apóstolos'] },
+  'romanos': { abbrev: 'Rm', full: 'Romanos', id: 45, chapters: 16, variations: ['rm', 'rom', 'romanos', 'carta aos romanos'] },
+  '1corintios': { abbrev: '1Co', full: '1 Coríntios', id: 46, chapters: 16, variations: ['1co', '1 co', '1cor', '1 cor', 'i co', 'primeiro corintios', 'primeira coríntios', '1 corintios', '1 coríntios'] },
+  '2corintios': { abbrev: '2Co', full: '2 Coríntios', id: 47, chapters: 13, variations: ['2co', '2 co', '2cor', '2 cor', 'ii co', 'segundo corintios', 'segunda coríntios', '2 corintios', '2 coríntios'] },
+  'galatas': { abbrev: 'Gl', full: 'Gálatas', id: 48, chapters: 6, variations: ['gl', 'gal', 'galatas', 'gálatas'] },
+  'efesios': { abbrev: 'Ef', full: 'Efésios', id: 49, chapters: 6, variations: ['ef', 'efe', 'efesios', 'efésios'] },
+  'filipenses': { abbrev: 'Fp', full: 'Filipenses', id: 50, chapters: 4, variations: ['fp', 'fil', 'flp', 'filipenses'] },
+  'colossenses': { abbrev: 'Cl', full: 'Colossenses', id: 51, chapters: 4, variations: ['cl', 'col', 'colossenses'] },
+  '1tessalonicenses': { abbrev: '1Ts', full: '1 Tessalonicenses', id: 52, chapters: 5, variations: ['1ts', '1 ts', '1tes', '1 tes', 'i ts', 'primeiro tessalonicenses', 'primeira tessalonicenses', '1 tessalonicenses'] },
+  '2tessalonicenses': { abbrev: '2Ts', full: '2 Tessalonicenses', id: 53, chapters: 3, variations: ['2ts', '2 ts', '2tes', '2 tes', 'ii ts', 'segundo tessalonicenses', 'segunda tessalonicenses', '2 tessalonicenses'] },
+  '1timoteo': { abbrev: '1Tm', full: '1 Timóteo', id: 54, chapters: 6, variations: ['1tm', '1 tm', '1tim', '1 tim', 'i tm', 'primeiro timoteo', 'primeira timóteo', '1 timoteo', '1 timóteo'] },
+  '2timoteo': { abbrev: '2Tm', full: '2 Timóteo', id: 55, chapters: 4, variations: ['2tm', '2 tm', '2tim', '2 tim', 'ii tm', 'segundo timoteo', 'segunda timóteo', '2 timoteo', '2 timóteo'] },
+  'tito': { abbrev: 'Tt', full: 'Tito', id: 56, chapters: 3, variations: ['tt', 'tit', 'tito'] },
+  'filemom': { abbrev: 'Fm', full: 'Filemom', id: 57, chapters: 1, variations: ['fm', 'file', 'flm', 'filemom'] },
+  'hebreus': { abbrev: 'Hb', full: 'Hebreus', id: 58, chapters: 13, variations: ['hb', 'heb', 'hebreus'] },
+  'tiago': { abbrev: 'Tg', full: 'Tiago', id: 59, chapters: 5, variations: ['tg', 'tia', 'tiago'] },
+  '1pedro': { abbrev: '1Pe', full: '1 Pedro', id: 60, chapters: 5, variations: ['1pe', '1 pe', '1pd', '1 pd', 'i pe', 'primeiro pedro', 'primeira pedro', '1 pedro'] },
+  '2pedro': { abbrev: '2Pe', full: '2 Pedro', id: 61, chapters: 3, variations: ['2pe', '2 pe', '2pd', '2 pd', 'ii pe', 'segundo pedro', 'segunda pedro', '2 pedro'] },
+  '1joao': { abbrev: '1Jo', full: '1 João', id: 62, chapters: 5, variations: ['1jo', '1 jo', '1joa', '1 joa', 'i jo', 'primeiro joão', 'primeira joão', '1 joao', '1 joão'] },
+  '2joao': { abbrev: '2Jo', full: '2 João', id: 63, chapters: 1, variations: ['2jo', '2 jo', '2joa', '2 joa', 'ii jo', 'segundo joão', 'segunda joão', '2 joao', '2 joão'] },
+  '3joao': { abbrev: '3Jo', full: '3 João', id: 64, chapters: 1, variations: ['3jo', '3 jo', '3joa', '3 joa', 'iii jo', 'terceiro joão', 'terceira joão', '3 joao', '3 joão'] },
+  'judas': { abbrev: 'Jd', full: 'Judas', id: 65, chapters: 1, variations: ['jd', 'jud', 'judas'] },
+  'apocalipse': { abbrev: 'Ap', full: 'Apocalipse', id: 66, chapters: 22, variations: ['ap', 'apo', 'apoc', 'apocalipse'] }
+};
+
+// Abbrev to book ID map
+const BOOK_ID_MAP = {};
+const ABBREV_TO_KEY = {};
+for (const [key, book] of Object.entries(BIBLE_BOOKS)) {
+  BOOK_ID_MAP[book.abbrev] = book.id;
+  ABBREV_TO_KEY[book.abbrev] = key;
+}
+
+// Book sections for browser
+const BOOK_SECTIONS = [
+  { name: 'Pentateuco', keys: ['genesis','exodo','levitico','numeros','deuteronomio'] },
+  { name: 'Históricos', keys: ['josue','juizes','rute','1samuel','2samuel','1reis','2reis','1cronicas','2cronicas','esdras','neemias','ester'] },
+  { name: 'Poéticos', keys: ['jo','salmos','proverbios','eclesiastes','canticos'] },
+  { name: 'Profetas Maiores', keys: ['isaias','jeremias','lamentacoes','ezequiel','daniel'] },
+  { name: 'Profetas Menores', keys: ['oseias','joel','amos','obadias','jonas','miqueias','naum','habacuque','sofonias','ageu','zacarias','malaquias'] },
+  { name: 'Evangelhos', keys: ['mateus','marcos','lucas','joao'] },
+  { name: 'Atos', keys: ['atos'] },
+  { name: 'Epístolas de Paulo', keys: ['romanos','1corintios','2corintios','galatas','efesios','filipenses','colossenses','1tessalonicenses','2tessalonicenses','1timoteo','2timoteo','tito','filemom'] },
+  { name: 'Epístolas Gerais', keys: ['hebreus','tiago','1pedro','2pedro','1joao','2joao','3joao','judas'] },
+  { name: 'Profético', keys: ['apocalipse'] }
+];
+
+// All available translations + labels (used by offline download UI)
+const ALL_TRANSLATIONS = ['ARA','NVIPT','MENS','NTLH','NVT','NAA','ACF11','ARC09','KJA','MSG','KJV','NIV2011','RV1960'];
+const TRANS_LABELS = {
+  ARA: 'Almeida Revista e Atualizada', NVIPT: 'Nova Versão Internacional',
+  MENS: 'A Mensagem', NTLH: 'Linguagem de Hoje', NVT: 'Nova Versão Transformadora',
+  NAA: 'Nova Almeida Atualizada', ACF11: 'Almeida Corrigida Fiel',
+  ARC09: 'Almeida Revista e Corrigida', KJA: 'King James Atualizada',
+  MSG: 'The Message (EN)', KJV: 'King James Version (EN)',
+  NIV2011: 'NIV 2011 (EN)', RV1960: 'Reina-Valera 1960 (ES)'
+};
+
+// Translation names
+const TRANSLATIONS = {
+  // Offline (instant loading)
+  'MENS': 'A Mensagem',
+  'ARA': 'Almeida Revista e Atualizada',
+  'NVIPT': 'Nova Versão Internacional',
+  'NTLH': 'Linguagem de Hoje',
+  'NVT': 'Nova Versão Transformadora',
+  'NAA': 'Nova Almeida Atualizada',
+  'ACF11': 'Almeida Corrigida Fiel',
+  'ARC09': 'Almeida Revista e Corrigida',
+  'KJA': 'King James Atualizada',
+  // English
+  'MSG': 'The Message (EN)',
+  'KJV': 'King James Version (EN)',
+  'NIV2011': 'NIV 2011 (EN)',
+};
+
+// ========== BIBLE REFERENCE DETECTOR ==========
+function normalizeBookName(text) {
+  let normalized = text.toLowerCase()
+    .replace(/[áàâã]/g, 'a')
+    .replace(/[éèê]/g, 'e')
+    .replace(/[íìî]/g, 'i')
+    .replace(/[óòôõ]/g, 'o')
+    .replace(/[úùû]/g, 'u')
+    .replace(/[ç]/g, 'c')
+    .trim();
+  normalized = normalized
+    .replace(/^(o\s+)?evangelho\s+de\s+/i, '')
+    .replace(/^(o\s+)?livro\s+(de|dos)\s+/i, '')
+    .replace(/^(a\s+)?carta\s+(de|aos?)\s+/i, '')
+    .replace(/^atos\s+dos\s+apostolos/, 'atos');
+  for (const [key, book] of Object.entries(BIBLE_BOOKS)) {
+    if (book.variations.some(v => v === normalized)) return book;
+  }
+  return null;
+}
+
+// ========== APP STATE ==========
+const verseCache = new Map();
+let lastDropdownBookId = null;
+let isListening = false;
+let recognition = null;
+let mediaRecorder = null;
+let currentRef = null; // current displayed reference (with bookId, chapter, verse, etc.)
+
+// ========== LANGUAGE DETECTION ==========
+function detectLanguage() {
+  const saved = localStorage.getItem('bib_language');
+  if (saved) return saved;
+  const nav = (navigator.language || 'pt').toLowerCase();
+  if (nav.startsWith('en')) return 'en';
+  if (nav.startsWith('es')) return 'es';
+  return 'pt';
+}
+
+function saveLanguage(lang) {
+  localStorage.setItem('bib_language', lang);
+  // Update default translation if user hasn't explicitly chosen one
+  if (!localStorage.getItem('bible_translation_explicit')) {
+    const def = lang === 'en' ? 'MSG' : lang === 'es' ? 'RV1960' : 'MENS';
+    localStorage.setItem('bible_translation', def);
+    if ($('translationSelect')) $('translationSelect').value = def;
+    populateTranslationBadge();
+  }
+  buildWelcomeTransList();
+}
+
+const FEATURED_TRANSLATIONS = {
+  pt: ['NAA', 'NVIPT', 'MENS'],
+  en: ['KJV', 'MSG'],
+  es: ['RV1960']
+};
+
+const DEFAULT_TRANSLATION = { pt: 'MENS', en: 'MSG', es: 'RV1960' };
+
+function getTranslation() {
+  return localStorage.getItem('bible_translation') || DEFAULT_TRANSLATION[detectLanguage()] || 'MENS';
+}
+
+function hideWelcomeMore() { /* no-op, just closes welcome context */ }
+
+// ========== DOM ELEMENTS ==========
+const $ = id => document.getElementById(id);
+
+// ========== BIBLE DATA (local-first, IndexedDB, API fallback) ==========
+async function fetchChapter(bookId, chapter) {
+  const trans = getTranslation();
+  const key = `ch:${trans}:${bookId}:${chapter}`;
+  if (verseCache.has(key)) return verseCache.get(key);
+  // Try local static data first (instant, no network)
+  try {
+    const r = await fetch(`/data/${trans}/${bookId}/${chapter}.json`);
+    if (r.ok) {
+      const data = await r.json();
+      verseCache.set(key, data);
+      return data;
+    }
+  } catch {}
+  // Try IndexedDB offline cache
+  // For large books (≥40 chapters): load whole-book index at once → populates all chapters in verseCache
+  try {
+    const bookInfo = Object.values(BIBLE_BOOKS).find(b => b.id === bookId);
+    if (bookInfo && bookInfo.chapters >= 40) {
+      const bookData = await idbGet(trans, `${bookId}_BOOK`);
+      if (bookData) {
+        for (const [chNum, verses] of Object.entries(bookData)) {
+          verseCache.set(`ch:${trans}:${bookId}:${chNum}`, verses);
+        }
+        const cached = verseCache.get(key);
+        if (cached) return cached;
+      }
+    }
+  } catch {}
+  try {
+    const idbData = await idbGet(trans, `${bookId}_${chapter}`);
+    if (idbData) {
+      verseCache.set(key, idbData);
+      return idbData;
+    }
+  } catch {}
+  // Legacy: try localStorage (migration path)
+  try {
+    const offlineKey = `bib_${trans}_${bookId}_${chapter}`;
+    const cached = localStorage.getItem(offlineKey);
+    if (cached) {
+      const data = JSON.parse(cached);
+      verseCache.set(key, data);
+      // Migrate to IndexedDB silently
+      idbPut(trans, `${bookId}_${chapter}`, data).then(() => {
+        try { localStorage.removeItem(offlineKey); } catch {}
+      }).catch(() => {});
+      return data;
+    }
+  } catch {}
+  // Fallback to API
+  try {
+    const r = await fetch(`https://bolls.life/get-chapter/${trans}/${bookId}/${chapter}/`);
+    if (!r.ok) return null;
+    const data = await r.json();
+    verseCache.set(key, data);
+    // Save to IndexedDB for offline use
+    idbPut(trans, `${bookId}_${chapter}`, data).catch(() => {});
+    return data;
+  } catch { return null; }
+}
+
+// ========== DISPLAY ==========
+function getBookByAbbrev(abbrev) {
+  for (const book of Object.values(BIBLE_BOOKS)) {
+    if (book.abbrev === abbrev) return book;
+  }
+  return null;
+}
+
+async function loadChapter(bookAbbrev, chapter, highlightVerse, verseEnd) {
+  console.log('loadChapter:', bookAbbrev, chapter, highlightVerse);
+  bLog('read', {ref: bookAbbrev + chapter + (highlightVerse ? ':'+highlightVerse : ''), tr: getTranslation()});
+  const book = getBookByAbbrev(bookAbbrev);
+  if (!book) { console.error('Book not found:', bookAbbrev); return; }
+  $('chapterNavRow').style.display = 'flex';
+
+  $('statusMsg').textContent = '⏳ Carregando...';
+  const data = await fetchChapter(book.id, chapter);
+  if (!data || !data.length) { $('statusMsg').textContent = '⚠️ Erro ao carregar capítulo'; return; }
+
+  currentRef = { book: book.abbrev, bookFull: book.full, bookId: book.id, maxChapters: book.chapters, chapter, verse: highlightVerse, verseEnd };
+
+  // Save to history
+  saveToHistory(currentRef);
+
+  // Update header
+  $('verseRef').textContent = `${book.full} ${chapter}${highlightVerse ? ':' + highlightVerse : ''}${verseEnd ? '-' + verseEnd : ''}`;
+  const t = getTranslation();
+  if ($('translationBadgeSelect')) $('translationBadgeSelect').value = t;
+  $('chapterSubtitle').textContent = `${book.full} — Capítulo ${chapter} de ${book.chapters}`;
+  // Populate chapter dropdown (lazy — only rebuild when book changes)
+  const chSel = $('chapterLabel');
+  if (lastDropdownBookId !== book.id) {
+    chSel.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    for (let i = 1; i <= book.chapters; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `Capítulo ${i}`;
+      frag.appendChild(opt);
+    }
+    chSel.appendChild(frag);
+    lastDropdownBookId = book.id;
+  }
+  chSel.value = chapter;
+
+  // Nav buttons
+  $('prevChBtn').disabled = (book.id === 1 && chapter <= 1);
+  $('nextChBtn').disabled = (book.id === 66 && chapter >= book.chapters);
+
+  // Render verses
+  const html = data.map(v => {
+    const vNum = v.verse;
+    const isHL = highlightVerse && (verseEnd ? (vNum >= highlightVerse && vNum <= verseEnd) : vNum === highlightVerse);
+    const text = v.text.replace(/<[^>]*>/g, ''); // strip any HTML tags from API
+    const red = isRedLetter(book.id, chapter, vNum);
+    const vText = red ? `<span class="words-of-jesus">${text}</span>` : text;
+    return `<p id="v${vNum}" class="${isHL ? 'verse-highlight font-semibold' : 'opacity-80'}" onclick="toggleVerseSelect(this, ${vNum})" style="cursor:pointer;"><sup class="gold text-xs mr-1">${vNum}</sup>${vText}</p>`;
+  }).join('');
+  $('chapterContent').innerHTML = html;
+
+  $('welcomeScreen').style.display = 'none';
+  $('chapterDisplay').classList.remove('hidden');
+  $('chapterHeader').classList.remove('hidden');
+  $('chapterDisplay').style.paddingTop = '48px';
+  $('statusMsg').textContent = '';
+
+  // Scroll to highlighted verse
+  if (highlightVerse) {
+    setTimeout(() => {
+      const el = document.getElementById('v' + highlightVerse);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        selectedVerse = { el, num: highlightVerse };
+      }
+    }, 150);
+  } else {
+    selectedVerse = null;
+  }
+}
+
+function goToChapter(ch) {
+  if (!currentRef) return;
+  loadChapter(currentRef.book, ch);
+}
+
+function navigateChapter(delta) {
+  if (!currentRef) return;
+  const newCh = currentRef.chapter + delta;
+  
+  if (newCh < 1) {
+    // Go to previous book's last chapter
+    const prevBookId = currentRef.bookId - 1;
+    if (prevBookId < 1) return; // Genesis 1, can't go back
+    const prevBook = Object.values(BIBLE_BOOKS).find(b => b.id === prevBookId);
+    if (prevBook) {
+      loadChapter(prevBook.abbrev, prevBook.chapters, null, null);
+      return;
+    }
+  }
+  
+  if (newCh > currentRef.maxChapters) {
+    // Go to next book's chapter 1
+    const nextBookId = currentRef.bookId + 1;
+    if (nextBookId > 66) return; // Revelation last, can't go forward
+    const nextBook = Object.values(BIBLE_BOOKS).find(b => b.id === nextBookId);
+    if (nextBook) {
+      loadChapter(nextBook.abbrev, 1, null, null);
+      return;
+    }
+  }
+  
+  loadChapter(currentRef.book, newCh, null, null);
+}
+
+// Pinch to resize font
+let baseFontSize = parseInt(localStorage.getItem('bib_font_size') || '18');
+let pinchStartDist = 0;
+let pinchStartFontSize = 0;
+
+function applyFontSize() {
+  const el = $('chapterContent');
+  if (el) el.style.fontSize = baseFontSize + 'px';
+  const dt = $('devotionalText');
+  if (dt) dt.style.fontSize = baseFontSize + 'px';
+  localStorage.setItem('bib_font_size', baseFontSize);
+}
+
+document.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    pinchStartDist = Math.sqrt(dx * dx + dy * dy);
+    pinchStartFontSize = baseFontSize;
+  }
+}, { passive: false });
+
+document.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 2 && pinchStartDist > 0) {
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const scale = dist / pinchStartDist;
+    baseFontSize = Math.round(Math.min(32, Math.max(12, pinchStartFontSize * scale)));
+    applyFontSize();
+  }
+}, { passive: false });
+
+document.addEventListener('touchend', (e) => {
+  if (e.touches.length < 2) pinchStartDist = 0;
+}, { passive: true });
+
+// Apply saved font size on load
+applyFontSize();
+
+// Swipe navigation
+let touchStartX = 0;
+let touchStartY = 0;
+document.addEventListener('touchstart', (e) => {
+  touchStartX = e.changedTouches[0].screenX;
+  touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
+document.addEventListener('touchend', (e) => {
+  if (!currentRef) return;
+  const dx = e.changedTouches[0].screenX - touchStartX;
+  const dy = e.changedTouches[0].screenY - touchStartY;
+  // Only trigger if horizontal swipe > 80px and more horizontal than vertical
+  if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    if (dx < 0) navigateChapter(1);  // swipe left → next
+    else navigateChapter(-1);         // swipe right → prev
+  }
+}, { passive: true });
+
+// ========== BOOK BROWSER (now inline in bottom search dropup) ==========
+
+// ========== AUDIO RECORDING (record → Gemini transcribe+parse) ==========
+let mediaStream = null;
+let listenTimeout = null;
+
+function blobToBase64(blob) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function toggleListening() {
+  if (isListening) { stopListening(); return; }
+  bLog('mic_on');
+  
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    $('statusMsg').textContent = '⚠️ Permissão de microfone negada.';
+    return;
+  }
+
+  isListening = true;
+  $('actionBtn').classList.add('pulse-listen');
+  $('actionIcon').textContent = '⏹️';
+  $('statusMsg').textContent = '🎙️ Fale a referência... toque ⏹️ para enviar';
+
+  const recorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
+  mediaRecorder = recorder;
+  let chunks = [];
+  recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+  recorder.onstop = async () => {
+    if (chunks.length === 0) return;
+    const blob = new Blob(chunks, { type: 'audio/webm' });
+    chunks = [];
+    // Only process if we were listening (not cancelled)
+    if (blob.size > 1000) { // skip tiny recordings
+      await processAudio(blob);
+    }
+  };
+  recorder.start();
+
+  // Auto-stop after 15s
+  listenTimeout = setTimeout(() => stopListening(), 15000);
+}
+
+function stopListening() {
+  isListening = false;
+  if (listenTimeout) { clearTimeout(listenTimeout); listenTimeout = null; }
+  $('actionBtn').classList.remove('pulse-listen');
+  // Force reset icon first, then let updateActionBtn decide mic vs send
+  actionMode = '';
+  $('actionIcon').textContent = '🎙️';
+  $('actionBtn').style.background = '';
+  updateActionBtn($('quickSearch').value);
+  
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop(); // triggers onstop → processAudio
+  }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  if (recognition) { recognition.onend = null; recognition.stop(); recognition = null; }
+}
+
+async function processAudio(blob) {
+  $('statusMsg').textContent = '🔄 Processando áudio...';
+  const apiKey = localStorage.getItem('gemini_api_key') || null;
+  const b64 = await blobToBase64(blob);
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['X-Gemini-Key'] = apiKey;
+
+    // Single Gemini call: transcribe + extract reference
+    const r = await fetch('/gemini-proxy.php', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        contents: [{ parts: [
+          { text: `Ouça este áudio em português brasileiro. Extraia a referência bíblica mencionada.
+
+Responda SOMENTE com JSON puro:
+{"transcript":"o que foi dito","book":"NomeCompleto","chapter":numero,"verse":numero_ou_null}
+
+Se não houver referência bíblica: {"transcript":"o que foi dito","book":null}
+
+IMPORTANTE: "terceiro livro de Provérbios" = Provérbios capítulo 3 (não 3º livro). Números ordinais = capítulo.
+Use nomes em português: Gênesis, Êxodo, Salmos, João, Apocalipse, 1 Coríntios, 2 Reis, etc.
+"Pedro 3 4" = 1 Pedro capítulo 3 versículo 4 (assuma 1º se não especificado).` },
+          { inlineData: { mimeType: 'audio/webm', data: b64 } }
+        ]}],
+        generationConfig: { temperature: 0, maxOutputTokens: 100, responseMimeType: 'application/json' }
+      })
+    });
+
+    if (!r.ok) { $('statusMsg').textContent = '⚠️ Erro no servidor'; return; }
+    const data = await r.json();
+    const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    console.log('Gemini audio response:', responseText);
+
+    const jsonMatch = responseText.match(/\{[^}]+\}/);
+    if (!jsonMatch) { $('statusMsg').textContent = '❓ Não entendi o áudio'; return; }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (parsed.transcript) {
+      $('statusMsg').textContent = '🎙️ "' + parsed.transcript.substring(0, 50) + '"';
+    }
+
+    if (!parsed.book) {
+      $('statusMsg').textContent = '❓ Não encontrei referência em: "' + (parsed.transcript || '').substring(0, 30) + '"';
+      setTimeout(() => { $('statusMsg').textContent = ''; }, 4000);
+      return;
+    }
+
+    // Find book by name
+    const bookName = parsed.book.toLowerCase()
+      .replace(/[áàâã]/g,'a').replace(/[éèê]/g,'e').replace(/[íìî]/g,'i')
+      .replace(/[óòôõ]/g,'o').replace(/[úùû]/g,'u').replace(/[ç]/g,'c');
+
+    let foundBook = null;
+    for (const b of Object.values(BIBLE_BOOKS)) {
+      const norm = b.full.toLowerCase().replace(/[áàâã]/g,'a').replace(/[éèê]/g,'e').replace(/[íìî]/g,'i').replace(/[óòôõ]/g,'o').replace(/[úùû]/g,'u').replace(/[ç]/g,'c');
+      if (norm === bookName || b.full.toLowerCase() === parsed.book.toLowerCase()) {
+        foundBook = b; break;
+      }
+    }
+
+    if (foundBook) {
+      $('statusMsg').textContent = '📖 ' + foundBook.full + ' ' + parsed.chapter + (parsed.verse ? ':' + parsed.verse : '');
+      await loadChapter(foundBook.abbrev, parsed.chapter, parsed.verse || null, null);
+    } else {
+      $('statusMsg').textContent = '❓ Livro não encontrado: ' + parsed.book;
+      setTimeout(() => { $('statusMsg').textContent = ''; }, 4000);
+    }
+  } catch (e) {
+    console.error('processAudio error:', e);
+    $('statusMsg').textContent = '⚠️ Erro: ' + e.message;
+  }
+}
+
+let actionMode = 'mic'; // 'mic' or 'send'
+function updateActionBtn(val) {
+  const hasText = val && val.trim().length > 0;
+  if (isListening) return; // don't change while recording
+  if (hasText && actionMode !== 'send') {
+    actionMode = 'send';
+    $('actionIcon').textContent = '➤';
+    $('actionBtn').style.background = '#4CAF50';
+  } else if (!hasText && actionMode !== 'mic') {
+    actionMode = 'mic';
+    $('actionIcon').textContent = '🎙️';
+    $('actionBtn').style.background = '';
+  }
+}
+
+function handleActionBtn() {
+  if (isListening) { toggleListening(); return; }
+  if (actionMode === 'send') {
+    const val = $('quickSearch').value.trim();
+    if (val) {
+      handleQuickSearch(val);
+      updateActionBtn($('quickSearch').value);
+    }
+  } else {
+    toggleListening();
+  }
+}
+
+// ========== THEME & FONT ==========
+function applyTheme(theme) {
+  const resolved = theme === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : theme;
+  document.documentElement.setAttribute('data-theme', resolved);
+  const mc = document.querySelector('meta[name="theme-color"]');
+  if (mc) mc.content = resolved === 'dark' ? '#1a1a2e' : '#FDF6E3';
+  localStorage.setItem('bib-theme', theme);
+  // Update segmented buttons
+  document.querySelectorAll('[data-theme-btn]').forEach(btn => {
+    btn.style.background = btn.dataset.themeBtn === theme ? 'var(--gold)' : 'transparent';
+    btn.style.color = btn.dataset.themeBtn === theme ? 'var(--bg)' : 'var(--cream)';
+  });
+}
+
+function applyFont(family, size) {
+  document.body.style.fontFamily = family;
+  const cc = $('chapterContent');
+  if (cc) cc.style.fontSize = size + 'px';
+  localStorage.setItem('bib-font', family);
+  localStorage.setItem('bib-fontSize', size);
+  baseFontSize = size;
+}
+
+function applyContentWidth(w) {
+  document.documentElement.style.setProperty('--content-width', w + 'px');
+  const lbl = $('widthLabel');
+  if (lbl) lbl.textContent = w + 'px';
+  localStorage.setItem('bib-contentWidth', w);
+}
+
+// Listen for system theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (localStorage.getItem('bib-theme') === 'system') applyTheme('system');
+});
+
+// Init theme & font on load
+(function initThemeFont() {
+  const theme = localStorage.getItem('bib-theme') || 'light';
+  applyTheme(theme);
+  const font = localStorage.getItem('bib-font') || "'Source Serif 4', Georgia, serif";
+  const fontSize = parseInt(localStorage.getItem('bib-fontSize') || '18');
+  applyFont(font, fontSize);
+  const cw = parseInt(localStorage.getItem('bib-contentWidth') || '720');
+  applyContentWidth(cw);
+  // Set default translation on first visit based on detected language
+  if (!localStorage.getItem('bible_translation')) {
+    const lang = detectLanguage();
+    localStorage.setItem('bible_translation', DEFAULT_TRANSLATION[lang] || 'MENS');
+  }
+  // Build welcome screen translation list on page load
+  buildWelcomeTransList();
+})();
+
+// ========== SETTINGS ==========
+function showSettings() {
+  $('settingsModal').classList.remove('hidden');
+  if ($('apiKeyInput')) $('apiKeyInput').value = localStorage.getItem('gemini_api_key') || '';
+  const ttsRate = localStorage.getItem('tts_rate') || '1.0';
+  if ($('ttsRateSlider')) { $('ttsRateSlider').value = ttsRate; $('ttsRateLabel').textContent = ttsRate + 'x'; }
+  populateVoiceSelector();
+  updateOfflineStatus();
+  buildWelcomeTransList();
+  // Remove legacy text color override
+  localStorage.removeItem('bib_text_color');
+  $('translationSelect').value = getTranslation();
+  if ($('aboutTranslation')) $('aboutTranslation').textContent = getTranslation() + ' - ' + (TRANSLATIONS[getTranslation()] || '');
+  // Sync theme buttons
+  const theme = localStorage.getItem('bib-theme') || 'light';
+  document.querySelectorAll('[data-theme-btn]').forEach(btn => {
+    btn.style.background = btn.dataset.themeBtn === theme ? 'var(--gold)' : 'transparent';
+    btn.style.color = btn.dataset.themeBtn === theme ? 'var(--bg)' : 'var(--cream)';
+  });
+  // Sync font controls
+  const font = localStorage.getItem('bib-font') || "'Source Serif 4', Georgia, serif";
+  const fontSize = parseInt(localStorage.getItem('bib-fontSize') || '18');
+  $('fontFamilySelect').value = font;
+  $('fontSizeSlider').value = fontSize;
+  $('fontSizeLabel').textContent = fontSize + 'px';
+  const cw = parseInt(localStorage.getItem('bib-contentWidth') || '720');
+  $('widthSlider').value = cw;
+  $('widthLabel').textContent = cw + 'px';
+  // Red letter toggle
+  setRedLetter(redLetterEnabled);
+}
+function hideSettings() { $('settingsModal').classList.add('hidden'); }
+function showHelp2() { $('helpModal2').classList.remove('hidden'); }
+function hideHelp2() { $('helpModal2').classList.add('hidden'); }
+$('helpModal2')?.addEventListener('click', (e) => { if (e.target === $('helpModal2')) hideHelp2(); });
+function saveApiKey() { const el = $('apiKeyInput'); if (!el) return; const k = el.value.trim(); if (k) localStorage.setItem('gemini_api_key', k); else localStorage.removeItem('gemini_api_key'); }
+function saveTranslation() {
+  const v = $('translationSelect').value;
+  localStorage.setItem('bible_translation', v);
+  localStorage.setItem('bible_translation_explicit', '1');
+  if ($('aboutTranslation')) $('aboutTranslation').textContent = v + ' - ' + (TRANSLATIONS[v] || '');
+  // Clear cache when translation changes
+  verseCache.clear();
+  // Reload current chapter if displayed
+  if (currentRef) loadChapter(currentRef.book, currentRef.chapter, currentRef.verse, currentRef.verseEnd);
+}
+
+// Close modals on backdrop click
+$('settingsModal').onclick = (e) => { if (e.target === $('settingsModal')) hideSettings(); };
+
+// ========== TRANSLATION DROPDOWN ==========
+function populateTranslationBadge() {
+  const sel = $('translationBadgeSelect');
+  if (!sel) return;
+  sel.innerHTML = '';
+  for (const [k, v] of Object.entries(TRANSLATIONS)) {
+    const opt = document.createElement('option');
+    opt.value = k;
+    opt.textContent = v;
+    sel.appendChild(opt);
+  }
+  sel.value = getTranslation();
+}
+
+function changeTranslationFromBadge(val) {
+  localStorage.setItem('bible_translation', val);
+  verseCache.clear();
+  if (currentRef) loadChapter(currentRef.book, currentRef.chapter, currentRef.verse, currentRef.verseEnd);
+  if ($('translationSelect')) $('translationSelect').value = val;
+}
+
+// ========== SMART SEARCH ==========
+// Accepts: "jn3:16", "jo 3 16", "João 3:16", "john 3", "gn1", "sl23:1", "genesis 1"
+// Also English book names for international users
+const EN_BOOKS = {
+  'genesis':'Gn','exodus':'Êx','leviticus':'Lv','numbers':'Nm','deuteronomy':'Dt',
+  'joshua':'Js','judges':'Jz','ruth':'Rt','1samuel':'1Sm','2samuel':'2Sm',
+  '1kings':'1Rs','2kings':'2Rs','1chronicles':'1Cr','2chronicles':'2Cr',
+  'ezra':'Ed','nehemiah':'Ne','esther':'Et','job':'Jó','psalms':'Sl','psalm':'Sl',
+  'proverbs':'Pv','ecclesiastes':'Ec','song':'Ct','isaiah':'Is','jeremiah':'Jr',
+  'lamentations':'Lm','ezekiel':'Ez','daniel':'Dn','hosea':'Os','joel':'Jl',
+  'amos':'Am','obadiah':'Ob','jonah':'Jn','micah':'Mq','nahum':'Na',
+  'habakkuk':'Hc','zephaniah':'Sf','haggai':'Ag','zechariah':'Zc','malachi':'Ml',
+  'matthew':'Mt','mark':'Mc','luke':'Lc','john':'Jo','acts':'At',
+  'romans':'Rm','1corinthians':'1Co','2corinthians':'2Co','galatians':'Gl',
+  'ephesians':'Ef','philippians':'Fp','colossians':'Cl',
+  '1thessalonians':'1Ts','2thessalonians':'2Ts','1timothy':'1Tm','2timothy':'2Tm',
+  'titus':'Tt','philemon':'Fm','hebrews':'Hb','james':'Tg',
+  '1peter':'1Pe','2peter':'2Pe','1john':'1Jo','2john':'2Jo','3john':'3Jo',
+  'jude':'Jd','revelation':'Ap','rev':'Ap'
+};
+
+// Numbers by name (PT + EN) for voice detection
+const NUM_WORDS = {
+  'um':1,'uma':1,'uno':1,'one':1,'primeiro':1,'primeira':1,
+  'dois':2,'duas':2,'two':2,'segundo':2,'segunda':2,
+  'três':3,'tres':3,'three':3,'terceiro':3,'terceira':3,
+  'quatro':4,'four':4,'cinco':5,'five':5,'seis':6,'six':6,
+  'sete':7,'seven':7,'oito':8,'eight':8,'nove':9,'nine':9,
+  'dez':10,'ten':10,'onze':11,'eleven':11,'doze':12,'twelve':12,
+  'treze':13,'quatorze':14,'quinze':15,'dezesseis':16,'dezessete':17,
+  'dezoito':18,'dezenove':19,'vinte':20,'trinta':30,'quarenta':40,
+  'cinquenta':50
+};
+
+function wordToNum(w) {
+  if (!w) return null;
+  const n = parseInt(w);
+  if (!isNaN(n)) return n;
+  const low = w.toLowerCase().trim();
+  if (NUM_WORDS[low]) return NUM_WORDS[low];
+  // Handle "vinte e um" etc
+  const parts = low.split(/\s+e\s+/);
+  if (parts.length === 2 && NUM_WORDS[parts[0]] && NUM_WORDS[parts[1]]) {
+    return NUM_WORDS[parts[0]] + NUM_WORDS[parts[1]];
+  }
+  return null;
+}
+
+function parseSearchQuery(query) {
+  query = query.trim();
+  if (!query) return null;
+  
+  // Normalize
+  let q = query.toLowerCase()
+    .replace(/[áàâã]/g, 'a').replace(/[éèê]/g, 'e').replace(/[íìî]/g, 'i')
+    .replace(/[óòôõ]/g, 'o').replace(/[úùû]/g, 'u').replace(/[ç]/g, 'c');
+  
+  // Try custom parsing FIRST (handles "gen 2 14", "joao 3 16", numbers by name)
+  // Pattern: book + chapter (number or word) + optional verse (number or word)
+  const match = q.match(/^(\d?\s*[a-zê]+)\s+(.+)$/i);
+  if (match) {
+    let bookStr = match[1].trim();
+    const rest = match[2].trim();
+    
+    // Split rest into chapter and verse parts
+    const parts = rest.split(/\s*[:\s]\s*/);
+    const chNum = wordToNum(parts[0]);
+    const vNum = parts.length > 1 ? wordToNum(parts.slice(1).join(' ')) : null;
+    
+    if (chNum) {
+      let book = normalizeBookName(bookStr);
+      if (!book) {
+        const enKey = bookStr.replace(/\s+/g, '');
+        const abbrev = EN_BOOKS[enKey];
+        if (abbrev) book = getBookByAbbrev(abbrev);
+      }
+      if (!book) {
+        for (const b of Object.values(BIBLE_BOOKS)) {
+          const norm = b.full.toLowerCase().replace(/[áàâã]/g,'a').replace(/[éèê]/g,'e').replace(/[íìî]/g,'i').replace(/[óòôõ]/g,'o').replace(/[úùû]/g,'u').replace(/[ç]/g,'c');
+          if (norm.startsWith(bookStr) || b.abbrev.toLowerCase() === bookStr) { book = b; break; }
+        }
+      }
+      if (book) {
+        return {
+          book: book.abbrev, bookFull: book.full, bookId: book.id, maxChapters: book.chapters,
+          chapter: chNum, verse: vNum, verseEnd: null,
+          formatted: vNum ? `${book.abbrev} ${chNum}:${vNum}` : `${book.abbrev} ${chNum}`
+        };
+      }
+    }
+  }
+  
+  // Compact patterns: "gn1", "jn3:16", "jo3:16"
+  const compactMatch = q.match(/^(\d?\s*[a-zê]+?)(\d+)\s*[:]?\s*(\d+)?$/i);
+  if (compactMatch) {
+    let bookStr = compactMatch[1].trim();
+    const chapter = parseInt(compactMatch[2]);
+    const verse = compactMatch[3] ? parseInt(compactMatch[3]) : null;
+    let book = normalizeBookName(bookStr);
+    if (!book) {
+      const enKey = bookStr.replace(/\s+/g, '');
+      const abbrev = EN_BOOKS[enKey];
+      if (abbrev) book = getBookByAbbrev(abbrev);
+    }
+    if (!book) {
+      for (const b of Object.values(BIBLE_BOOKS)) {
+        const norm = b.full.toLowerCase().replace(/[áàâã]/g,'a').replace(/[éèê]/g,'e').replace(/[íìî]/g,'i').replace(/[óòôõ]/g,'o').replace(/[úùû]/g,'u').replace(/[ç]/g,'c');
+        if (norm.startsWith(bookStr) || b.abbrev.toLowerCase() === bookStr) { book = b; break; }
+      }
+    }
+    if (book) {
+      return {
+        book: book.abbrev, bookFull: book.full, bookId: book.id, maxChapters: book.chapters,
+        chapter, verse, verseEnd: null, formatted: verse ? `${book.abbrev} ${chapter}:${verse}` : `${book.abbrev} ${chapter}`
+      };
+    }
+  }
+  
+  return null;
+}
+
+// ========== DROPUP PANEL (books browser + search results) ==========
+let searchFocused = false;
+let blurTimeout = null;
+
+function showDropup() { $('searchDropup').classList.remove('hidden'); }
+function hideDropup() { $('searchDropup').classList.add('hidden'); }
+
+function renderInlineBooks(filter) {
+  const f = (filter || '').toLowerCase().replace(/[áàâã]/g,'a').replace(/[éèê]/g,'e').replace(/[íìî]/g,'i').replace(/[óòôõ]/g,'o').replace(/[úùû]/g,'u').replace(/[ç]/g,'c');
+  let html = '';
+  for (const section of BOOK_SECTIONS) {
+    const books = section.keys.map(k => BIBLE_BOOKS[k]).filter(b => {
+      if (!f) return true;
+      const norm = b.full.toLowerCase().replace(/[áàâã]/g,'a').replace(/[éèê]/g,'e').replace(/[íìî]/g,'i').replace(/[óòôõ]/g,'o').replace(/[úùû]/g,'u').replace(/[ç]/g,'c');
+      return norm.includes(f) || b.abbrev.toLowerCase().includes(f) || b.variations.some(v => v.includes(f));
+    });
+    if (books.length === 0) continue;
+    html += `<div class="book-section-title px-3">${section.name}</div>`;
+    for (const b of books) {
+      html += `<div class="book-item px-3" onmousedown="event.preventDefault()" onclick="selectBookInline('${b.abbrev}','${b.full}',${b.chapters})">
+        <span>${b.full}</span>
+        <span class="text-xs opacity-50">${b.chapters} cap.</span>
+      </div>`;
+    }
+  }
+  $('inlineBooksPanel').innerHTML = html || '<p class="text-center opacity-50 py-4">Nenhum livro encontrado</p>';
+}
+
+function selectBookInline(abbrev, fullName, chapters) {
+  // Open directly at chapter 1
+  openFromInline(abbrev, 1);
+}
+
+function openFromInline(abbrev, chapter) {
+  hideDropup();
+  $('quickSearch').value = '';
+  $('quickSearch').blur();
+  loadChapter(abbrev, chapter, null, null);
+}
+
+function onSearchFocus() {
+  if (blurTimeout) { clearTimeout(blurTimeout); blurTimeout = null; }
+  searchFocused = true;
+  const val = $('quickSearch').value.trim();
+  if (!val) {
+    // Empty → show all books by category
+    $('searchSuggestions').innerHTML = '';
+    renderInlineBooks('');
+    showDropup();
+  } else {
+    handleSearchInput(val);
+  }
+}
+
+function onSearchBlur() {
+  blurTimeout = setTimeout(() => {
+    searchFocused = false;
+    hideDropup();
+  }, 200);
+}
+
+function handleQuickSearch(val) {
+  const ref = parseSearchQuery(val);
+  if (ref) {
+    hideDropup();
+    $('quickSearch').value = '';
+    $('quickSearch').blur();
+    updateActionBtn('');
+    loadChapter(ref.book, ref.chapter, ref.verse, ref.verseEnd);
+    return;
+  }
+  // No match — just filter books
+  renderInlineBooks(val);
+  $('searchSuggestions').innerHTML = '';
+  showDropup();
+}
+
+function handleSearchInput(val) {
+  if (!val || val.length < 1) {
+    $('searchSuggestions').innerHTML = '';
+    renderInlineBooks('');
+    showDropup();
+    return;
+  }
+  
+  // Try to parse as reference
+  const ref = parseSearchQuery(val);
+  if (ref) {
+    $('searchSuggestions').innerHTML = `<div class="p-3 cursor-pointer hover:bg-highlight gold" onmousedown="event.preventDefault()" onclick="handleQuickSearch('${val.replace(/'/g,'&#39;')}')">📖 ${ref.bookFull} ${ref.chapter}${ref.verse ? ':' + ref.verse : ''}</div>`;
+    $('inlineBooksPanel').innerHTML = '';
+    showDropup();
+    return;
+  }
+  
+  // Filter books inline
+  $('searchSuggestions').innerHTML = '';
+  renderInlineBooks(val);
+  showDropup();
+}
+
+// Hide dropup on click outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#quickSearch') && !e.target.closest('#searchDropup')) {
+    hideDropup();
+  }
+});
+
+// ========== BTC DONATION ==========
+function showBtcQR() {
+  const addr = 'bc1q8xlhzut5nlqufc4fk60t672g7klazjzfjqt9zr';
+  navigator.clipboard.writeText(addr).catch(()=>{});
+  const div = document.createElement('div');
+  div.className = 'fixed inset-0 modal-bg z-50 flex items-center justify-center';
+  div.onclick = (e) => { if (e.target === div) div.remove(); };
+  div.innerHTML = `<div class="bg-card rounded-2xl p-6 text-center max-w-xs">
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${addr}&bgcolor=16213e&color=d4a574" class="mx-auto rounded-lg mb-4" style="width:200px;height:200px;">
+    <p class="text-xs gold font-mono break-all mb-3" style="font-size:10px;">${addr}</p>
+    <p class="text-xs opacity-60">✅ Endereço copiado</p>
+    <button onclick="this.closest('.fixed').remove()" class="mt-3 text-xs opacity-50 hover:opacity-100">Fechar</button>
+  </div>`;
+  document.body.appendChild(div);
+}
+
+// ========== HISTORY PANEL ==========
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('bib_history') || '[]'); }
+  catch { return []; }
+}
+
+function saveToHistory(ref) {
+  const hist = getHistory();
+  hist.push({
+    ts: Date.now(),
+    book: ref.book, bookFull: ref.bookFull, chapter: ref.chapter,
+    verse: ref.verse, verseEnd: ref.verseEnd
+  });
+  // Keep last 500
+  if (hist.length > 500) hist.splice(0, hist.length - 500);
+  localStorage.setItem('bib_history', JSON.stringify(hist));
+}
+
+function deleteHistoryItem(idx) {
+  if (!confirm('Remover este item do histórico?')) return;
+  const hist = getHistory();
+  hist.splice(idx, 1);
+  localStorage.setItem('bib_history', JSON.stringify(hist));
+  renderHistoryPanel();
+}
+
+function getDayName(date) {
+  const days = ['Domingo','Segunda-Feira','Terça-Feira','Quarta-Feira','Quinta-Feira','Sexta-Feira','Sábado'];
+  return days[date.getDay()];
+}
+
+function renderHistoryPanel() {
+  const hist = getHistory();
+  if (hist.length === 0) {
+    $('historyPanelContent').innerHTML = '<p class="text-center opacity-50 py-8">Nenhuma busca ainda</p>';
+    return;
+  }
+  
+  // Group by date
+  const groups = {};
+  hist.forEach((item, idx) => {
+    const d = new Date(item.ts);
+    const dateKey = d.toISOString().split('T')[0];
+    if (!groups[dateKey]) groups[dateKey] = { date: d, items: [] };
+    groups[dateKey].items.push({ ...item, idx });
+  });
+  
+  const sortedDates = Object.keys(groups).sort().reverse();
+  const todayKey = new Date().toISOString().split('T')[0];
+  const MAX_VISIBLE = 7;
+  let html = '';
+
+  for (let di = 0; di < sortedDates.length; di++) {
+    const dateKey = sortedDates[di];
+    const g = groups[dateKey];
+    const d = g.date;
+    const isToday = dateKey === todayKey;
+    const collapsed = !isToday;
+    const dayId = 'hday_' + dateKey.replace(/-/g,'');
+    const items = g.items.reverse();
+    const hasMore = isToday && items.length > MAX_VISIBLE;
+
+    html += `<div class="book-section-title mt-3 cursor-pointer select-none" onclick="document.getElementById('${dayId}').classList.toggle('hidden')" style="display:flex;align-items:center;gap:6px;">
+      <span style="font-size:10px;opacity:0.5;">${collapsed ? '▶' : '▼'}</span>
+      ${dateKey} ${getDayName(d)} <span class="opacity-40 text-xs">(${items.length})</span>
+    </div>`;
+    html += `<div id="${dayId}" class="${collapsed ? 'hidden' : ''}">`;
+
+    const visibleCount = (isToday && hasMore) ? MAX_VISIBLE : items.length;
+    for (let i = 0; i < visibleCount; i++) {
+      const item = items[i];
+      html += renderHistoryItem(item);
+    }
+
+    if (hasMore) {
+      const moreId = 'hmore_' + dayId;
+      html += `<div id="${moreId}_btn" class="text-center py-2 cursor-pointer opacity-50 hover:opacity-100 text-sm" onclick="document.getElementById('${moreId}').classList.remove('hidden');this.remove();">⋯ mais ${items.length - MAX_VISIBLE}</div>`;
+      html += `<div id="${moreId}" class="hidden">`;
+      for (let i = MAX_VISIBLE; i < items.length; i++) {
+        html += renderHistoryItem(items[i]);
+      }
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+  }
+  $('historyPanelContent').innerHTML = html;
+}
+
+function renderHistoryItem(item) {
+  const t = new Date(item.ts);
+  const time = t.toTimeString().slice(0, 5);
+  const label = `${item.bookFull} ${item.chapter}${item.verse ? ':' + item.verse : ''}${item.verseEnd ? '-' + item.verseEnd : ''}`;
+  return `<div class="flex items-center justify-between py-2 border-b border-[rgba(212,165,116,0.2)]">
+    <div class="flex-1 cursor-pointer" onclick="hideHistoryPanel();loadChapter('${item.book}',${item.chapter},${item.verse||'null'},${item.verseEnd||'null'})">
+      <span class="opacity-50 text-xs mr-2">${time}</span>
+      <span class="gold">${label}</span>
+    </div>
+    <button onclick="deleteHistoryItem(${item.idx})" class="text-xs opacity-40 hover:opacity-100 pl-3" title="Remover">🗑️</button>
+  </div>`;
+}
+
+function showHistoryPanel() {
+  renderHistoryPanel();
+  $('historyPanel').classList.remove('hidden');
+}
+function hideHistoryPanel() { $('historyPanel').classList.add('hidden'); }
+$('historyPanel')?.addEventListener('click', (e) => { if (e.target === $('historyPanel')) hideHistoryPanel(); });
+
+// ========== MIC BUTTON: tap toggle + hold-to-talk ==========
+{
+  const btn = $('actionBtn');
+  let holdTimer = null;
+  let isHolding = false;
+
+  btn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    isHolding = false;
+    holdTimer = setTimeout(() => {
+      // Long press → hold-to-talk mode (only in mic mode)
+      if (actionMode !== 'send') {
+        isHolding = true;
+        if (!isListening) toggleListening();
+      }
+    }, 500);
+  }, { passive: false });
+
+  btn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    if (isHolding) {
+      // Release after hold → wait 1s then stop (don't cut audio mid-word)
+      isHolding = false;
+      if (isListening) setTimeout(() => stopListening(), 1000);
+    } else {
+      // Short tap → toggle mic or send
+      handleActionBtn();
+    }
+  }, { passive: false });
+
+  btn.addEventListener('touchcancel', () => {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    if (isHolding) { isHolding = false; if (isListening) stopListening(); }
+  });
+
+  // Mouse fallback for desktop
+  btn.addEventListener('click', (e) => {
+    // Only handle if not touch device (touch events already handled)
+    if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
+    handleActionBtn();
+  });
+}
+
+// ========== USAGE LOGGING ==========
+function bLog(ev, extra) {
+  try { navigator.sendBeacon('/log.php', JSON.stringify(Object.assign({ev}, extra||{}))); } catch(e) {}
+}
+bLog('open', {src: document.referrer ? new URL(document.referrer).hostname : 'direct'});
+
+// ========== INIT ==========
+populateTranslationBadge();
+// First visit onboarding arrow (only when no chapter displayed)
+if (!localStorage.getItem('bib_visited') && $('chapterDisplay').classList.contains('hidden')) {
+  const arrow = document.createElement('div');
+  arrow.className = 'onboard-arrow';
+  arrow.innerHTML = '↘';
+  document.body.appendChild(arrow);
+  const removeArrow = () => {
+    if (!arrow.parentNode) return;
+    arrow.style.transition = 'opacity 0.5s';
+    arrow.style.opacity = '0';
+    setTimeout(() => arrow.remove(), 500);
+    localStorage.setItem('bib_visited', '1');
+    document.removeEventListener('click', removeArrow);
+    document.removeEventListener('touchstart', removeArrow);
+  };
+  document.addEventListener('click', removeArrow);
+  document.addEventListener('touchstart', removeArrow);
+  setTimeout(removeArrow, 5000);
+}
+
+// ========== TTS NARRATION (on-device, free) ==========
+let ttsState = { active: false, utterance: null, verses: [], idx: 0 };
+
+function stripVerseNum(text) {
+  // Strip patterns like "7 ", "1-2 ", "3-5 ", "5-6 ", "12 "
+  return text.replace(/^\s*\d+[-–]\d+\s+/, '').replace(/^\s*\d+\s+/, '');
+}
+
+function getVerseText(el) {
+  // Get text content excluding <sup> elements (verse numbers)
+  let text = '';
+  el.childNodes.forEach(n => {
+    if (n.nodeName !== 'SUP') text += n.textContent;
+  });
+  return stripVerseNum(text.trim());
+}
+let selectedVerse = null; // { el, num }
+
+function toggleVerseSelect(el, vNum) {
+  if (selectedVerse && selectedVerse.num === vNum) {
+    // Deselect
+    el.classList.remove('verse-highlight', 'font-semibold');
+    el.classList.add('opacity-80');
+    selectedVerse = null;
+  } else {
+    // Deselect previous
+    if (selectedVerse) {
+      selectedVerse.el.classList.remove('verse-highlight', 'font-semibold');
+      selectedVerse.el.classList.add('opacity-80');
+    }
+    // Select new
+    el.classList.add('verse-highlight', 'font-semibold');
+    el.classList.remove('opacity-80');
+    selectedVerse = { el, num: vNum };
+  }
+}
+
+function getPreferredVoice() {
+  const voices = speechSynthesis.getVoices();
+  const saved = localStorage.getItem('tts_voice');
+  if (saved) {
+    const match = voices.find(v => v.name === saved);
+    if (match) return match;
+  }
+  const lang = getTranslation().startsWith('KJV') || getTranslation() === 'NIV2011' ? 'en' : 'pt';
+  const preferred = voices.filter(v => v.lang.startsWith(lang));
+  const enhanced = preferred.find(v => /enhanced|natural|premium|neural/i.test(v.name));
+  return enhanced || preferred[0] || voices[0] || null;
+}
+
+function populateVoiceSelector() {
+  const sel = $('ttsVoiceSelect');
+  if (!sel) return;
+  const voices = speechSynthesis.getVoices();
+  const lang = getTranslation().startsWith('KJV') || getTranslation() === 'NIV2011' ? 'en' : 'pt';
+  const relevant = voices.filter(v => v.lang.startsWith(lang) || v.lang.startsWith('pt') || v.lang.startsWith('en'));
+  const saved = localStorage.getItem('tts_voice');
+  
+  sel.innerHTML = '<option value="">Automática</option>';
+  relevant.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = `${v.name} (${v.lang})`;
+    if (v.name === saved) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function toggleNarration() {
+  if (ttsState.active) { stopNarration(); return; }
+  
+  if (selectedVerse) {
+    // Read only selected verse
+    const text = getVerseText(selectedVerse.el);
+    ttsState.verses = [{ el: selectedVerse.el, text }];
+  } else {
+    // Read whole chapter
+    const paragraphs = $('chapterContent')?.querySelectorAll('p');
+    if (!paragraphs?.length) return;
+    ttsState.verses = Array.from(paragraphs).map(p => ({
+      el: p,
+      text: getVerseText(p)
+    }));
+  }
+  
+  ttsState.idx = 0;
+  ttsState.active = true;
+  updateTtsButton(true);
+  speakNext();
+}
+
+function updateTtsButton(active) {
+  const btn = $('ttsHeaderBtn');
+  if (!btn) return;
+  if (active) {
+    btn.textContent = 'Silenciar';
+    btn.style.background = 'rgba(181,137,0,0.35)';
+  } else {
+    btn.textContent = 'Ler em Voz Alta';
+    btn.style.background = 'rgba(212,165,116,0.15)';
+  }
+}
+
+function speakNext() {
+  if (!ttsState.active || ttsState.idx >= ttsState.verses.length) {
+    stopNarration();
+    return;
+  }
+  const v = ttsState.verses[ttsState.idx];
+  
+  // Highlight current verse
+  ttsState.verses.forEach(x => x.el.style.background = '');
+  v.el.style.background = 'rgba(181,137,0,0.15)';
+  v.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  const utt = new SpeechSynthesisUtterance(v.text);
+  const voice = getPreferredVoice();
+  if (voice) utt.voice = voice;
+  utt.rate = parseFloat(localStorage.getItem('tts_rate') || '1.0');
+  utt.pitch = 1.0;
+  
+  utt.onend = () => {
+    ttsState.idx++;
+    if (ttsState.active) speakNext();
+  };
+  utt.onerror = () => {
+    ttsState.idx++;
+    if (ttsState.active) speakNext();
+  };
+  
+  ttsState.utterance = utt;
+  speechSynthesis.speak(utt);
+}
+
+function stopNarration() {
+  speechSynthesis.cancel();
+  ttsState.active = false;
+  ttsState.utterance = null;
+  ttsState.verses.forEach(x => x.el.style.background = '');
+  updateTtsButton(false);
+}
+
+// ========== TEXT COLOR ==========
+function setTextColor(color) {
+  document.documentElement.style.setProperty('--cream', color);
+  localStorage.setItem('bib_text_color', color);
+  // Update active swatch
+  document.querySelectorAll('.color-swatch').forEach(s => {
+    s.classList.toggle('active', s.style.background === color || rgbToHex(s.style.backgroundColor) === color);
+  });
+}
+function rgbToHex(rgb) {
+  if (rgb.startsWith('#')) return rgb;
+  const m = rgb.match(/\d+/g);
+  if (!m) return rgb;
+  return '#' + m.slice(0,3).map(x => parseInt(x).toString(16).padStart(2,'0')).join('');
+}
+// Apply saved color on load (only for light theme)
+(function() {
+  const saved = localStorage.getItem('bib_text_color');
+  const theme = localStorage.getItem('bib-theme') || 'light';
+  if (saved && theme === 'light') document.documentElement.style.setProperty('--cream', saved);
+})();
+
+// ========== IndexedDB OFFLINE BIBLE ==========
+// ALL_TRANSLATIONS moved to top (near BIBLE_BOOKS)
+let bibDB = null;
+
+function openBibDB() {
+  return new Promise((resolve, reject) => {
+    if (bibDB) return resolve(bibDB);
+    const req = indexedDB.open('bibOffline', 3);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      ALL_TRANSLATIONS.forEach(t => {
+        if (!db.objectStoreNames.contains(t)) db.createObjectStore(t);
+      });
+    };
+    req.onsuccess = (e) => { bibDB = e.target.result; resolve(bibDB); };
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function idbGet(trans, key) {
+  const db = await openBibDB();
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(trans, 'readonly');
+      const req = tx.objectStore(trans).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    } catch { resolve(null); }
+  });
+}
+
+async function idbPut(trans, key, val) {
+  const db = await openBibDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(trans, 'readwrite');
+    tx.objectStore(trans).put(val, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function idbCount(trans) {
+  const db = await openBibDB();
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(trans, 'readonly');
+      const req = tx.objectStore(trans).count();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(0);
+    } catch { resolve(0); }
+  });
+}
+
+function totalBibleChapters() {
+  let t = 0;
+  for (const b of Object.values(BIBLE_BOOKS)) t += b.chapters;
+  return t;
+}
+
+let downloadAbort = false;
+
+async function downloadTransGz(trans, statusEl, barEl) {
+  // Try to download gzip bundle, decompress, and store in IndexedDB
+  // Returns true if successful, false to fall back to chapter-by-chapter
+  const total = totalBibleChapters();
+  try {
+    if (statusEl) statusEl.textContent = `Baixando ${trans}...`;
+    const res = await fetch(`data/${trans}.json.gz`);
+    if (!res.ok) return false;
+    
+    // Decompress gzip using native DecompressionStream
+    if (typeof DecompressionStream === 'undefined') return false;
+    const ds = new DecompressionStream('gzip');
+    const decompressed = res.body.pipeThrough(ds);
+    const reader = decompressed.getReader();
+    const chunks = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    const blob = new Blob(chunks);
+    const text = await blob.text();
+    const data = JSON.parse(text);
+    
+    if (statusEl) statusEl.textContent = `Salvando ${trans} offline...`;
+    if (barEl) barEl.style.width = '50%';
+    
+    // Store each book/chapter in IndexedDB — one transaction per book (batch writes)
+    // Large books (≥40 chapters) also get a _BOOK whole-book index for fast preloading
+    const db = await openBibDB();
+    let saved = 0;
+    const bookIds = Object.keys(data);
+    for (const bookId of bookIds) {
+      if (downloadAbort) return false;
+      const chapters = data[bookId];
+      const chNums = Object.keys(chapters);
+      const isLargeBook = chNums.length >= 40;
+      // One transaction for the entire book
+      const tx = db.transaction(trans, 'readwrite');
+      const store = tx.objectStore(trans);
+      if (isLargeBook) {
+        store.put(chapters, `${bookId}_BOOK`); // whole-book index
+      }
+      for (const chNum of chNums) {
+        store.put(chapters[chNum], `${bookId}_${chNum}`);
+        saved++;
+      }
+      await new Promise((r, j) => { tx.oncomplete = r; tx.onerror = j; });
+      if (barEl) barEl.style.width = (50 + (saved / total) * 50).toFixed(1) + '%';
+    }
+    if (statusEl) statusEl.textContent = `✅ ${trans} offline! (${saved} capítulos)`;
+    if (barEl) barEl.style.width = '100%';
+    return true;
+  } catch (e) {
+    console.warn(`GZ download failed for ${trans}, falling back:`, e);
+    return false;
+  }
+}
+
+async function downloadForOffline() {
+  const sel = $('offlineTranslation').value;
+  const btn = $('offlineBtn');
+  const status = $('offlineStatus');
+  const progWrap = $('offlineProgress');
+  const progBar = $('offlineProgressBar');
+
+  // If currently downloading, abort
+  if (btn.dataset.downloading === '1') {
+    downloadAbort = true;
+    btn.textContent = 'Cancelando...';
+    return;
+  }
+
+  const translations = sel === '__ALL__' ? [...ALL_TRANSLATIONS] : [sel];
+  const totalPerTrans = totalBibleChapters();
+  const grandTotal = totalPerTrans * translations.length;
+
+  btn.dataset.downloading = '1';
+  btn.textContent = '⏹ Parar';
+  progWrap.style.display = 'block';
+  downloadAbort = false;
+
+  let done = 0;
+
+  try {
+    for (const trans of translations) {
+      if (downloadAbort) break;
+      
+      // Try gz bundle first
+      const gzOk = await downloadTransGz(trans, status, progBar);
+      if (gzOk) {
+        done += totalPerTrans;
+        progBar.style.width = ((done/grandTotal)*100).toFixed(1)+'%';
+        continue;
+      }
+      
+      // Fallback: chapter-by-chapter from API
+      for (const book of Object.values(BIBLE_BOOKS)) {
+        if (downloadAbort) break;
+        for (let ch = 1; ch <= book.chapters; ch++) {
+          if (downloadAbort) break;
+          const key = `${book.id}_${ch}`;
+          const existing = await idbGet(trans, key);
+          if (existing) { done++; progBar.style.width = ((done/grandTotal)*100)+'%'; continue; }
+
+          try {
+            const url = `https://bolls.life/get-chapter/${trans}/${book.id}/${ch}/`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`${res.status}`);
+            const data = await res.json();
+            await idbPut(trans, key, data);
+          } catch (e) {
+            status.textContent = `⚠️ Erro em ${trans} ${book.abbrev} ${ch}: ${e.message}. Continuando...`;
+            await new Promise(r => setTimeout(r, 1000));
+          }
+
+          done++;
+          const pct = ((done/grandTotal)*100);
+          progBar.style.width = pct.toFixed(1)+'%';
+          status.textContent = `${done}/${grandTotal} — ${trans} ${book.abbrev} ${ch}`;
+
+          if (done % 5 === 0) await new Promise(r => setTimeout(r, 150));
+        }
+      }
+    }
+
+    if (downloadAbort) {
+      status.textContent = `⏹ Parado. ${done}/${grandTotal} capítulos baixados.`;
+    } else {
+      status.textContent = `✅ Concluído! ${done} capítulos offline.`;
+    }
+  } catch (e) {
+    status.textContent = `❌ Erro: ${e.message}`;
+  }
+
+  btn.dataset.downloading = '0';
+  btn.textContent = 'Baixar';
+  progWrap.style.display = 'none';
+  updateOfflineStatus();
+}
+
+// TRANS_LABELS moved to top (near BIBLE_BOOKS)
+
+function buildWelcomeTransList() {
+  const container = $('welcomeTransList');
+  if (!container) return;
+  const lang = detectLanguage();
+  const featured = FEATURED_TRANSLATIONS[lang] || FEATURED_TRANSLATIONS['pt'];
+  // Update "more versions" link text by language
+  const moreLink = $('welcomeMoreVersions');
+  if (moreLink) {
+    moreLink.textContent = lang === 'en' ? 'Want more versions? Click here'
+      : lang === 'es' ? '¿Quieres más versiones? Haz clic aquí'
+      : 'Quer ver mais versões? Clique aqui';
+  }
+  // Update lang selector in settings if open
+  if ($('langSelect')) $('langSelect').value = lang;
+  let html = '';
+  for (const t of featured) {
+    html += '<div id="wt_' + t + '" style="display:flex;align-items:center;gap:8px;">'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
+      + '<span style="font-size:1rem;font-weight:700;color:var(--cream);">' + t + '</span>'
+      + '<span id="wt_status_' + t + '" style="font-size:0.8rem;color:#555;"></span>'
+      + '</div>'
+      + '<div style="height:3px;background:rgba(212,165,116,0.12);border-radius:2px;overflow:hidden;">'
+      + '<div id="wt_bar_' + t + '" style="height:100%;width:0%;background:var(--gold);transition:width 0.3s;"></div>'
+      + '</div>'
+      + '<p style="font-size:0.8rem;margin-top:2px;color:#777;">' + TRANS_LABELS[t] + '</p>'
+      + '</div>'
+      + '<button id="wt_btn_' + t + '" onclick="downloadSingleWelcome(\'' + t + '\')"'
+      + ' style="padding:6px 12px;font-size:0.85rem;border-radius:8px;background:rgba(212,165,116,0.15);border:1px solid rgba(212,165,116,0.3);color:var(--gold);cursor:pointer;white-space:nowrap;min-width:64px;">'
+      + 'Baixar</button>'
+      + '<button id="wt_del_' + t + '" onclick="deleteOfflineTranslation(\'' + t + '\')"'
+      + ' style="display:none;padding:4px 8px;font-size:1rem;border:none;background:transparent;cursor:pointer;opacity:0.4;" title="Apagar ' + t + '">🗑️</button>'
+      + '</div>';
+  }
+  container.innerHTML = html;
+  // Async status update — don't block render
+  setTimeout(function() { refreshWelcomeStatuses(); }, 100);
+}
+
+async function refreshWelcomeStatuses() {
+  const total = totalBibleChapters();
+  try { await openBibDB(); } catch { return; }
+  for (const t of ALL_TRANSLATIONS) {
+    const count = await idbCount(t);
+    const bar = document.getElementById(`wt_bar_${t}`);
+    const status = document.getElementById(`wt_status_${t}`);
+    const btn = document.getElementById(`wt_btn_${t}`);
+    if (!bar) continue;
+    const pct = total > 0 ? (count / total * 100) : 0;
+    bar.style.width = pct.toFixed(1) + '%';
+    // Show/hide delete button
+    var delBtn = document.getElementById('wt_del_' + t);
+    if (delBtn) delBtn.style.display = count > 0 ? 'inline-block' : 'none';
+
+    if (count >= total) {
+      status.textContent = '✅ Offline';
+      btn.textContent = '✅';
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+    } else if (count > 0) {
+      status.textContent = `${Math.round(pct)}% (${count}/${total})`;
+      btn.textContent = 'Continuar';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    } else {
+      status.textContent = '';
+      btn.textContent = 'Baixar';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  }
+}
+
+async function deleteOfflineTranslation(trans) {
+  if (!confirm('Apagar ' + trans + ' offline?')) return;
+  try {
+    const db = await openBibDB();
+    const tx = db.transaction(trans, 'readwrite');
+    tx.objectStore(trans).clear();
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+  } catch (e) { console.error(e); }
+  refreshWelcomeStatuses();
+  updateOfflineStatus();
+}
+
+async function downloadSingleWelcome(trans) {
+  const btn = document.getElementById(`wt_btn_${trans}`);
+  const bar = document.getElementById(`wt_bar_${trans}`);
+  const status = document.getElementById(`wt_status_${trans}`);
+  const total = totalBibleChapters();
+
+  if (btn.dataset.downloading === '1') {
+    downloadAbort = true;
+    btn.textContent = '...';
+    return;
+  }
+
+  btn.dataset.downloading = '1';
+  btn.textContent = '⏹ Parar';
+  downloadAbort = false;
+  let done = 0;
+
+  try {
+    // Try gz bundle first
+    const gzOk = await downloadTransGz(trans, status, bar);
+    if (!gzOk) {
+      // Fallback: chapter-by-chapter from API
+      for (const book of Object.values(BIBLE_BOOKS)) {
+        if (downloadAbort) break;
+        for (let ch = 1; ch <= book.chapters; ch++) {
+          if (downloadAbort) break;
+          const key = `${book.id}_${ch}`;
+          const existing = await idbGet(trans, key);
+          if (existing) { done++; bar.style.width = ((done/total)*100).toFixed(1)+'%'; continue; }
+          try {
+            const res = await fetch(`https://bolls.life/get-chapter/${trans}/${book.id}/${ch}/`);
+            if (!res.ok) throw new Error(`${res.status}`);
+            await idbPut(trans, key, await res.json());
+          } catch (e) {
+            status.textContent = `⚠️ ${book.abbrev} ${ch}`;
+            await new Promise(r => setTimeout(r, 1000));
+          }
+          done++;
+          bar.style.width = ((done/total)*100).toFixed(1)+'%';
+          status.textContent = `${done}/${total} — ${book.abbrev} ${ch}`;
+          if (done % 5 === 0) await new Promise(r => setTimeout(r, 150));
+        }
+      }
+    }
+    status.textContent = downloadAbort ? `⏹ ${done}/${total}` : '✅ Offline';
+  } catch (e) {
+    status.textContent = `❌ ${e.message}`;
+  }
+
+  btn.dataset.downloading = '0';
+  refreshWelcomeStatuses();
+  updateOfflineStatus();
+}
+
+async function updateOfflineStatus() {
+  const status = $('offlineStatus');
+  if (!status) return;
+  const total = totalBibleChapters();
+  const results = [];
+  try {
+    await openBibDB();
+    for (const t of ALL_TRANSLATIONS) {
+      const count = await idbCount(t);
+      if (count > 0) {
+        const pct = count >= total ? '✅' : `${Math.round(count/total*100)}%`;
+        results.push(`${t} ${pct}`);
+      }
+    }
+  } catch {}
+  if (results.length > 0) {
+    status.textContent = `Offline: ${results.join(' · ')}`;
+  } else {
+    status.textContent = '';
+  }
+  // Sync welcome screen statuses
+  refreshWelcomeStatuses();
+}
+
+// Ensure voices are loaded (some browsers load async)
+speechSynthesis.onvoiceschanged = () => { populateVoiceSelector(); };
+
+// Stop narration on chapter change
+const origLoadChapter = window.loadChapter;
+if (origLoadChapter) {
+  window.loadChapter = function() {
+    stopNarration();
+    selectedVerse = null;
+    return origLoadChapter.apply(this, arguments);
+  };
+}
+</script>
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});</script>
+<script>
+(function(){
+  var d=new Date(), t=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  var netBadge = document.getElementById('devotionalNetBadge');
+  function setOnlineBadge(){
+    if(!netBadge) return;
+    netBadge.style.display = 'inline-block';
+    netBadge.textContent = navigator.onLine ? 'online' : 'offline';
+    netBadge.style.background = navigator.onLine ? 'rgba(45, 212, 191, 0.14)' : 'rgba(212,165,116,0.16)';
+    netBadge.style.color = navigator.onLine ? '#2dd4bf' : 'var(--gold)';
+  }
+  setOnlineBadge();
+  window.addEventListener('online', setOnlineBadge);
+  window.addEventListener('offline', setOnlineBadge);
+  fetch('devotional/today.json?t='+t).then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>{
+    if(!j.text)throw 0;
+    var img=document.getElementById('devotionalImg');
+    img.src='devotional/today.jpg?t='+t;
+    var txt=document.getElementById('devotionalText');
+    var meta=document.getElementById('devotionalMeta');
+    var lines=j.text.split('\n'), out=[];
+    for(var i=0;i<lines.length;i++){
+      var l=lines[i];
+      if(l.startsWith('📖')||l.startsWith('✝️')){
+        out.push('<span class="gold" style="font-weight:600">'+l.replace(/</g,'&lt;')+'</span>');
+      } else if(l.match(/^[\"\“]/)){
+        out.push('<em>'+l.replace(/</g,'&lt;')+'</em>');
+      } else {
+        out.push(l.replace(/</g,'&lt;'));
+      }
+    }
+    txt.innerHTML=out.join('<br>');
+    if(j.updated_at){ meta.textContent='Atualizado em '+j.updated_at; }
+    document.getElementById('devotionalSection').style.display='block';
+    document.getElementById('welcomeFallback').style.display='none';
+    window._devText=j.text;
+    if(navigator.canShare) document.getElementById('shareDevotionalBtn').style.display='inline-block';
+  }).catch(function(){
+    fetch('devotional/last-updated.txt?t='+t).then(r=>r.ok?r.text():Promise.reject()).then(s=>{
+      var f=document.getElementById('welcomeLastUpdated');
+      if(f) f.textContent='Última atualização: '+s.trim();
+      if(netBadge){ netBadge.style.display='inline-block'; netBadge.textContent='offline'; }
+    }).catch(function(){});
+  });
+})();
+
+async function shareDevotional(){
+  try {
+    var img=document.getElementById('devotionalImg');
+    var resp=await fetch(img.src);
+    var blob=await resp.blob();
+    var file=new File([blob],'devocional.jpg',{type:'image/jpeg'});
+    var text=window._devText||'';
+    var shareData={text:text+'\n\nbib.muitos.com',files:[file]};
+    if(navigator.canShare&&navigator.canShare(shareData)){
+      await navigator.share(shareData);
+    } else {
+      // fallback: share text only
+      await navigator.share({text:text+'\n\nbib.muitos.com'});
+    }
+  }catch(e){}
+}
+</script>
+</body>
+</html>

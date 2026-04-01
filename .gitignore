@@ -1,0 +1,6 @@
+.env
+logs/
+t/
+v/
+devotional/pregenerated/
+*.DS_Store
